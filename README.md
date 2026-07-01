@@ -1,5 +1,19 @@
 # SHL Conversational Assessment Recommender
 
+## 🔴 Live demo
+
+| | URL |
+|---|---|
+| **API base** | https://shl-recommender-1l92.onrender.com |
+| **Interactive docs (Swagger UI)** | **https://shl-recommender-1l92.onrender.com/docs** |
+| **Health check** | https://shl-recommender-1l92.onrender.com/health |
+| **Chat** | `POST https://shl-recommender-1l92.onrender.com/chat` |
+
+> Try it in the browser via **/docs** → `POST /chat` → *Try it out*. On Render's free
+> tier the first request after idle may take ~50s to wake (cold start).
+
+---
+
 A stateless conversational agent that takes a recruiter from a vague intent
 ("I'm hiring a Java developer") to a grounded shortlist of **SHL Individual Test
 Solutions** through dialogue. It clarifies vague queries, recommends 1–10
