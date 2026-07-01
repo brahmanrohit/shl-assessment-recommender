@@ -1,0 +1,11 @@
+.env
+__pycache__/
+*.pyc
+data/cache/
+data/*.html
+data/*.log
+data/individual_listing.json
+data/job_urls.json
+.venv/
+venv/
+.pytest_cache/

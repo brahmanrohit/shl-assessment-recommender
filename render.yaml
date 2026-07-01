@@ -1,0 +1,15 @@
+# Render blueprint. Deploy: push to GitHub -> Render > New > Blueprint > pick repo.
+# Set GROQ_API_KEY in the dashboard (marked sync:false so it isn't stored in git).
+services:
+  - type: web
+    name: shl-recommender
+    runtime: python
+    plan: free
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "uvicorn app.main:app --host 0.0.0.0 --port $PORT"
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.9"
+      - key: GROQ_API_KEY
+        sync: false
