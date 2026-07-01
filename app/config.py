@@ -13,10 +13,13 @@ class Settings(BaseSettings):
     # Primary + fallback models. If the primary is decommissioned/ratelimited we retry the next.
     llm_model: str = "llama-3.3-70b-versatile"
     llm_fallback_models: str = "openai/gpt-oss-120b,llama-3.1-8b-instant"
-    llm_timeout_s: float = 12.0          # per call; 2 calls/turn keeps us < 30s eval cap
+    llm_timeout_s: float = 10.0          # per HTTP request
+    llm_call_budget_s: float = 12.0      # HARD wall-clock cap per complete_json call:
+                                         # 2 calls/turn (router+selector) stay < 30s eval cap
+                                         # even on repeated Groq timeouts (then we fall back)
     llm_max_retries: int = 2
     llm_temperature: float = 0.0
-    llm_max_backoff_s: float = 10.0      # cumulative 429/5xx sleep cap per call
+    llm_max_backoff_s: float = 8.0       # cumulative 429/5xx sleep cap per call
     llm_min_interval_s: float = 0.0      # client-side spacing (eval only; 0 = off)
 
     # --- Retrieval ---
@@ -28,6 +31,7 @@ class Settings(BaseSettings):
     # --- Agent behaviour ---
     max_clarifying_questions: int = 2    # never loop clarification past this
     commit_by_assistant_turn: int = 3    # by the Nth assistant turn, stop clarifying and recommend
+    max_history_messages: int = 24       # cap transcript sent to the LLM (payload/latency guard)
 
     @property
     def fallback_models(self) -> list[str]:

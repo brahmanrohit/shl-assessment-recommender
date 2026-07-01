@@ -86,15 +86,27 @@ def complete_json(system: str, user: str, *, temperature: float | None = None,
     last_err: Exception | None = None
     url = f"{settings.groq_base_url.rstrip('/')}/chat/completions"
     _throttle()
-    # Rate limits (429) are account-level, so switching models doesn't help — we back
-    # off and retry the SAME model. A cumulative sleep cap keeps us under the 30s cap.
+    # A HARD wall-clock deadline bounds the whole call: on repeated Groq timeouts we bail
+    # to the deterministic fallback instead of blowing the 30s-per-turn eval cap. Rate
+    # limits (429) are account-level, so switching models doesn't help — we back off and
+    # retry the SAME model, but never past the deadline.
     slept = 0.0
-    with httpx.Client(timeout=settings.llm_timeout_s) as client:
+    deadline = time.monotonic() + settings.llm_call_budget_s
+    def remaining() -> float:
+        return deadline - time.monotonic()
+    with httpx.Client() as client:
         for model in _models_to_try():
+            if remaining() <= 0.5:
+                break
             payload = dict(body, model=model)
-            for attempt in range(settings.llm_max_retries + 3):
+            for attempt in range(settings.llm_max_retries + 1):
+                rem = remaining()
+                if rem <= 0.5:
+                    last_err = LLMError(f"{model} -> call budget exhausted")
+                    break
                 try:
-                    r = client.post(url, headers=headers, json=payload)
+                    r = client.post(url, headers=headers, json=payload,
+                                    timeout=min(settings.llm_timeout_s, rem))
                     if r.status_code == 200:
                         content = r.json()["choices"][0]["message"]["content"]
                         return _extract_json(content)
@@ -103,14 +115,14 @@ def complete_json(system: str, user: str, *, temperature: float | None = None,
                         continue
                     if r.status_code == 429:
                         wait = _retry_after(r, attempt)
-                        if slept + wait > settings.llm_max_backoff_s:
+                        if slept + wait > settings.llm_max_backoff_s or wait >= remaining():
                             last_err = LLMError(f"{model} -> 429 (backoff budget exhausted)")
                             break  # try next model, then give up
                         time.sleep(wait); slept += wait
                         continue  # retry SAME model
                     if r.status_code in (500, 502, 503):
-                        wait = min(1.5 * (attempt + 1), 5.0)
-                        if slept + wait <= settings.llm_max_backoff_s:
+                        wait = min(1.5 * (attempt + 1), 4.0)
+                        if slept + wait <= settings.llm_max_backoff_s and wait < remaining():
                             time.sleep(wait); slept += wait
                         last_err = LLMError(f"{model} -> {r.status_code}")
                         continue

@@ -80,8 +80,8 @@ never a 500/422 — if Groq is slow or down. Schema compliance is enforced at th
 preference" off‑facts, ends on a shortlist — mirroring the described evaluator) plus binary
 **behavior probes**.
 
-* **Recall@10:** mean **~0.63–0.75** across 6 personas (Java dev, Python DS, cognitive grad,
-  office admin, .NET dev, sales). The residual gap is dominated by **near‑duplicate catalog
+* **Recall@10:** mean **≈ 0.63** (0.33–1.0 per persona) across 6 personas (Java dev, Python DS,
+  cognitive grad, office admin, .NET dev, sales). The residual gap is dominated by **near‑duplicate catalog
   variants** — there are 11 Java tests, and for a sales role the agent returns *sales‑specific*
   personality tools (OPQ MQ Sales, CCSQ, Sales Profiler) that my strict labels don't credit
   even though they're at least as relevant as generic OPQ32r. Manual inspection confirms the

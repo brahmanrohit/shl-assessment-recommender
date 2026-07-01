@@ -6,12 +6,22 @@ agent emits is a reference into `Catalog.items`, so a URL can never be hallucina
 from __future__ import annotations
 import json
 import logging
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
 from .config import settings
 
 log = logging.getLogger("shl.catalog")
+
+# Some scraped rows have trailing metadata ("... Test Type: P Remote Testing:") bled
+# into free-text fields. The dedicated test_type field already holds the real value,
+# so we strip this fragment to keep it out of the retrieval document.
+_FIELD_JUNK_RE = re.compile(r"\s*Test Type:.*$", re.I | re.S)
+
+
+def _clean_field(v: str) -> str:
+    return _FIELD_JUNK_RE.sub("", v).strip() if isinstance(v, str) else v
 
 TEST_TYPE_NAMES = {
     "A": "Ability & Aptitude", "B": "Biodata & Situational Judgement",
@@ -62,7 +72,11 @@ class Catalog:
         p = Path(path or settings.catalog_path)
         raw: list[dict] = []
         if p.exists():
-            raw = json.loads(p.read_text(encoding="utf-8"))
+            try:
+                raw = json.loads(p.read_text(encoding="utf-8"))
+            except (json.JSONDecodeError, OSError) as e:
+                log.error("failed to parse catalog %s: %s", p, e)
+                raw = []
         else:
             # Dev fallback: partial listing-only file if the detail scrape isn't done.
             alt = p.parent / "individual_listing.json"
@@ -81,9 +95,9 @@ class Catalog:
             items.append(Assessment(
                 name=name, url=url, test_type=tt,
                 test_type_names=r.get("test_type_names") or [TEST_TYPE_NAMES[t] for t in tt],
-                description=r.get("description") or "",
-                job_levels=r.get("job_levels") or "",
-                languages=r.get("languages") or "",
+                description=_clean_field(r.get("description") or ""),
+                job_levels=_clean_field(r.get("job_levels") or ""),
+                languages=_clean_field(r.get("languages") or ""),
                 length_minutes=r.get("length_minutes"),
                 remote_testing=r.get("remote_testing"),
                 adaptive_irt=r.get("adaptive_irt"),

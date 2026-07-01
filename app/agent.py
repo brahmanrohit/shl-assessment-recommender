@@ -85,10 +85,16 @@ class Agent:
     # -------------------- routing --------------------
     def _route(self, messages: list[Message]) -> dict:
         transcript = self._transcript(messages)
+        last_user = next((m.content for m in reversed(messages) if m.role == "user"), "")
         try:
             data = complete_json(ROUTER_SYSTEM, transcript, max_tokens=700)
             if isinstance(data, dict) and data.get("intent") in {
                     "recommend", "clarify", "compare", "refuse"}:
+                # defence-in-depth: a clear prompt-injection attempt is always refused,
+                # even if the LLM was talked into another intent.
+                if data.get("intent") != "refuse" and _INJECTION_RE.search(last_user):
+                    return {"intent": "refuse", "in_scope": False,
+                            "refusal_reply": DEFAULT_REFUSE}
                 return data
         except LLMError as e:
             log.warning("router LLM failed (%s); using heuristic", e)
@@ -270,7 +276,10 @@ class Agent:
 
     @staticmethod
     def _transcript(messages: list[Message]) -> str:
-        lines = [f"{m.role.upper()}: {m.content}" for m in messages if m.content.strip()]
+        # cap history to the most recent turns (payload/latency guard; a real 8-turn
+        # conversation is well under this, so no context is lost in practice).
+        recent = messages[-settings.max_history_messages:]
+        lines = [f"{m.role.upper()}: {m.content}" for m in recent if m.content.strip()]
         return "CONVERSATION:\n" + "\n".join(lines)
 
     @staticmethod

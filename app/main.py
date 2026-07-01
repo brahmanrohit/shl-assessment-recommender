@@ -85,7 +85,25 @@ _CHAT_OPENAPI = {
                 ]},
             }
         },
-    }
+    },
+    "responses": {
+        "200": {
+            "description": "Next agent reply plus an optional grounded shortlist.",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "reply": "Here are 3 SHL assessments that fit your requirements.",
+                        "recommendations": [
+                            {"name": "Java 8 (New)",
+                             "url": "https://www.shl.com/solutions/products/product-catalog/view/java-8-new/",
+                             "test_type": "K"}
+                        ],
+                        "end_of_conversation": True,
+                    }
+                }
+            },
+        }
+    },
 }
 
 
