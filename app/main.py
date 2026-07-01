@@ -53,7 +53,43 @@ def root() -> dict:
             "catalog_items": n, "endpoints": ["/health", "/chat"]}
 
 
-@app.post("/chat")
+# Documents the request body in OpenAPI so Swagger /docs renders an editable,
+# pre-filled input box in "Try it out" — even though we parse the raw Request
+# below (which keeps /chat crash-proof on malformed input).
+_CHAT_OPENAPI = {
+    "requestBody": {
+        "required": True,
+        "content": {
+            "application/json": {
+                "schema": {
+                    "type": "object",
+                    "properties": {
+                        "messages": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "role": {"type": "string",
+                                             "enum": ["user", "assistant"]},
+                                    "content": {"type": "string"},
+                                },
+                                "required": ["role", "content"],
+                            },
+                        }
+                    },
+                    "required": ["messages"],
+                },
+                "example": {"messages": [
+                    {"role": "user",
+                     "content": "I'm hiring a mid-level Java developer who works with stakeholders"}
+                ]},
+            }
+        },
+    }
+}
+
+
+@app.post("/chat", openapi_extra=_CHAT_OPENAPI)
 async def chat(request: Request) -> JSONResponse:
     # Parse defensively: a malformed body must not yield a 422 (schema violation).
     try:
