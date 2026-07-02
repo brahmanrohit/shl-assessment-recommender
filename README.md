@@ -4,10 +4,10 @@
 
 | | URL |
 |---|---|
-| **API base** | https://shl-recommender-1l92.onrender.com |
-| **Interactive docs (Swagger UI)** | **https://shl-recommender-1l92.onrender.com/docs** |
-| **Health check** | https://shl-recommender-1l92.onrender.com/health |
-| **Chat** | `POST https://shl-recommender-1l92.onrender.com/chat` |
+| **API base** | https://shl-recommender-1s8i.onrender.com |
+| **Interactive docs (Swagger UI)** | **https://shl-recommender-1s8i.onrender.com/docs** |
+| **Health check** | https://shl-recommender-1s8i.onrender.com/health |
+| **Chat** | `POST https://shl-recommender-1s8i.onrender.com/chat` |
 
 > Try it in the browser via **/docs** → `POST /chat` → *Try it out*. On Render's free
 > tier the first request after idle may take ~50s to wake (cold start).

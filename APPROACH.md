@@ -1,6 +1,6 @@
 # Conversational SHL Assessment Recommender — Approach
 
-**Live endpoint:** https://shl-recommender-1l92.onrender.com · `GET /health`, `POST /chat` · [docs](https://shl-recommender-1l92.onrender.com/docs)
+**Live endpoint:** https://shl-recommender-1s8i.onrender.com · `GET /health`, `POST /chat` · [docs](https://shl-recommender-1s8i.onrender.com/docs)
 **Stack:** FastAPI · Groq (Llama‑3.3‑70B) · BM25 + LLM query expansion · self‑scraped catalog
 
 ## 1. Problem framing & design choices
