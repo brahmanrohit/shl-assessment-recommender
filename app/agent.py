@@ -31,9 +31,13 @@ DEFAULT_REFUSE = ("I can only help with recommending SHL assessments. Tell me ab
 _INJECTION_RE = re.compile(
     r"ignore (the|your|all|previous)|disregard|reveal your|system prompt|you are now|"
     r"act as|jailbreak|forget (the|your|all)|new instructions", re.I)
+# Off-topic detection is a *fallback-only* heuristic (used when the LLM router is
+# down). Keep it tight: bare "legal"/"write .* email" wrongly refused legitimate
+# roles (legal assistant) and assessment queries (cover-letter writing).
 _OFFTOPIC_RE = re.compile(
     r"\b(weather|joke|poem|recipe|stock|bitcoin|salary|interview question|"
-    r"how (do|to) i (hire|fire)|write .* (email|cover letter)|lawsuit|legal|discriminat)",
+    r"how (do|to) i (hire|fire)|lawsuit|"
+    r"legal advice|legal question|legal issue|discriminat)",
     re.I)
 
 
@@ -61,9 +65,12 @@ class Agent:
         intent = route.get("intent", "clarify")
 
         # ---- turn-budget guard: stop clarifying before we run out of turns ----
-        if intent == "clarify" and n_assistant >= settings.max_clarifying_questions:
-            intent = "recommend"
-        if intent == "clarify" and n_assistant >= settings.commit_by_assistant_turn:
+        # Either cap forces a commit — the clarifying-question limit or the hard
+        # "commit by turn N" backstop. Only `clarify` is overridden; a late-turn
+        # refuse/compare must still stand.
+        if intent == "clarify" and (
+                n_assistant >= settings.max_clarifying_questions
+                or n_assistant >= settings.commit_by_assistant_turn):
             intent = "recommend"
 
         if intent == "refuse":
@@ -103,7 +110,7 @@ class Agent:
     def _heuristic_route(self, messages: list[Message]) -> dict:
         last = next((m.content for m in reversed(messages) if m.role == "user"), "")
         joined = " ".join(m.content for m in messages if m.role == "user")
-        n_user = sum(1 for m in messages if m.role == "user")
+        n_user = sum(1 for m in messages if m.role == "user" and m.content.strip())
         if _INJECTION_RE.search(last) or _OFFTOPIC_RE.search(last):
             return {"intent": "refuse", "in_scope": False, "refusal_reply": DEFAULT_REFUSE}
         vague = len(last.split()) < 6 and n_user <= 1 and not re.search(
@@ -210,8 +217,10 @@ class Agent:
         "S": ("simulation", "simulated"),
     }
 
+    # "lead" (no trailing space) subsumes "leader"/"leadership" and — unlike the old
+    # "lead " — also matches when the message ends in the word (e.g. "…a team lead").
     _PEOPLE_FACING = ("stakeholder", "customer", "client", "team", "collaborat",
-                      "manager", "management", "leader", "lead ", "people", "interpersonal",
+                      "manager", "management", "lead", "people", "interpersonal",
                       "communication", "sales", "service", "relationship")
 
     def _ensure_types(self, picks, cand_items, constraints, messages):
@@ -263,6 +272,8 @@ class Agent:
 
     @staticmethod
     def _map_indices(idx, cand_items):
+        if not isinstance(idx, (list, tuple)):   # LLM may emit a scalar/null "picks"
+            return []
         picks, seen = [], set()
         for i in idx:
             if isinstance(i, bool):
