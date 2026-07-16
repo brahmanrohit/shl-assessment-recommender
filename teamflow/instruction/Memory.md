@@ -9,7 +9,7 @@
 
 ## Current status
 
-- **Phase:** 0 complete ✅ — Phase 1 (Users + JWT auth) is NEXT
+- **Phase:** 1 complete ✅ (Users + JWT auth) — Phase 2 (Projects & Comments relations) is NEXT
 - **Last updated:** 2026-07-16
 - **CANONICAL LOCATION:** `C:\Users\ROHIT SHARMA\shl-assessment-recommender\teamflow\`
   — merged into the `shl-assessment-recommender` repo as a subfolder (owner's
@@ -64,10 +64,10 @@
 
 ## Next actions (in order)
 
-1. Owner explores the running API at http://localhost:8080/swagger-ui
-2. Owner studies LEARN.md sections 0–5 against the code
-3. Revisit project architecture together with owner (owner requested), then
-   begin **Phase 1** (see Phases.md): User entity → signup → login → JWT → protect endpoints
+1. Owner studies LEARN.md section 13 (auth) + plays with signup/login in Swagger UI
+2. Owner does the LEARN.md exercises (sections 12) to cement Phase 0+1
+3. Begin **Phase 2** (see Phases.md): Project & Comment entities, relations,
+   ownership checks
 
 ## Session log
 
@@ -97,3 +97,22 @@
 - Added a pointer to `teamflow/` in the SHL repo's root README
 - Push target: local `main` → `origin/deploy` (GitHub default branch)
 - Owner wants to revisit architecture together before starting Phase 1
+
+### 2026-07-16 — Session 4: PHASE 1 COMPLETE ✅ (Users + JWT auth)
+- Owner confirmed instruction/ plan stands as-is; built Phase 1 per Phases.md
+- New: User entity (unique email, BCrypt password_hash, Role ADMIN|MEMBER),
+  UserRepository, AuthService, TokenService (RS256 JWT, 24h, issuer=teamflow),
+  AdminBootstrap (creates admin from ADMIN_EMAIL/ADMIN_PASSWORD at startup),
+  AuthResource (POST /api/auth/signup 201, /api/auth/login 200),
+  DuplicateEmail→409 + InvalidCredentials→401 mappers
+- TaskResource now @RolesAllowed({ADMIN,MEMBER}); DELETE is ADMIN-only
+- Keys NOT committed (gitignored): generate-jwt-keys.sh locally; Dockerfile
+  generates a fresh pair per image build (openssl in build stage)
+- Swagger UI has an Authorize button (quarkus.smallrye-openapi.security-scheme=jwt)
+- Verified live via curl (9/9): 401 no-token, 201 signup (no hash leak,
+  role=MEMBER), 409 duplicate, 401 wrong password (vague msg), token issued,
+  200 with token, 403 member DELETE, 204 admin DELETE, 201 create with token
+- Tests written (AuthResourceTest, AuthTestSupport, TaskResourceTest updated)
+  but NOT executed locally (no Maven on machine; Dev Services needs local mvn) —
+  they will run in CI (Phase 6). Honest gap, noted deliberately.
+- LEARN.md gained section 13 (auth deep-dive + 4 new interview Q&As)

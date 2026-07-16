@@ -16,6 +16,7 @@ A backend REST API for managing tasks, built with **Java 21 + Quarkus**, backed 
 | Persistence | Hibernate ORM with Panache |
 | Database | MySQL 8 |
 | Validation | Hibernate Validator (Jakarta Bean Validation) |
+| Security | JWT (SmallRye JWT, RSA-signed) + BCrypt password hashing + role-based access |
 | Docs | OpenAPI + Swagger UI |
 | Build | Maven |
 | Packaging | Docker (multi-stage build) + Docker Compose |
@@ -72,7 +73,14 @@ docker compose down
 
 ## API endpoints
 
-Base URL: `http://localhost:8080/api/tasks`
+### Auth (public)
+
+| Method | Path | Description | Success code |
+|--------|------|-------------|--------------|
+| POST | `/api/auth/signup` | Register (always role MEMBER) | 201 |
+| POST | `/api/auth/login` | Get a JWT for your credentials | 200 |
+
+### Tasks (require `Authorization: Bearer <token>`)
 
 | Method | Path | Description | Success code |
 |--------|------|-------------|--------------|
@@ -80,33 +88,49 @@ Base URL: `http://localhost:8080/api/tasks`
 | GET | `/api/tasks/{id}` | Get one task by id | 200 |
 | POST | `/api/tasks` | Create a task | 201 |
 | PUT | `/api/tasks/{id}` | Update a task | 200 |
-| DELETE | `/api/tasks/{id}` | Delete a task | 204 |
+| DELETE | `/api/tasks/{id}` | Delete a task — **ADMIN only** | 204 |
+
+No token → **401**. A MEMBER calling DELETE → **403**.
+A bootstrap ADMIN is created at startup (configurable via `ADMIN_EMAIL` /
+`ADMIN_PASSWORD` env vars; dev default `admin@teamflow.local` / `admin1234`).
 
 ### Try it with curl
 
 ```bash
-# List all tasks
-curl http://localhost:8080/api/tasks
+# 1. Sign up
+curl -X POST http://localhost:8080/api/auth/signup \
+  -H "Content-Type: application/json" \
+  -d '{"email":"me@example.com","password":"secret-pass-1","displayName":"Me"}'
+
+# 2. Log in and grab the token from the response
+curl -X POST http://localhost:8080/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"me@example.com","password":"secret-pass-1"}'
+
+# 3. Call the API with the token (replace <TOKEN>)
+curl http://localhost:8080/api/tasks -H "Authorization: Bearer <TOKEN>"
 
 # List only in-progress tasks
-curl "http://localhost:8080/api/tasks?status=IN_PROGRESS"
-
-# Get one task
-curl http://localhost:8080/api/tasks/1
+curl "http://localhost:8080/api/tasks?status=IN_PROGRESS" -H "Authorization: Bearer <TOKEN>"
 
 # Create a task
 curl -X POST http://localhost:8080/api/tasks \
+  -H "Authorization: Bearer <TOKEN>" \
   -H "Content-Type: application/json" \
   -d '{"title":"Prepare for interview","priority":"HIGH","dueDate":"2026-08-20"}'
 
 # Update a task
 curl -X PUT http://localhost:8080/api/tasks/1 \
+  -H "Authorization: Bearer <TOKEN>" \
   -H "Content-Type: application/json" \
   -d '{"title":"Updated title","status":"DONE","priority":"LOW"}'
 
-# Delete a task
-curl -X DELETE http://localhost:8080/api/tasks/1
+# Delete a task (needs an ADMIN token)
+curl -X DELETE http://localhost:8080/api/tasks/1 -H "Authorization: Bearer <TOKEN>"
 ```
+
+> Tip: in Swagger UI, click **Authorize**, paste your token, and every
+> "Try it out" call sends it automatically.
 
 ### Example: validation error (blank title)
 
@@ -136,17 +160,20 @@ Request body `{"title":""}` returns **HTTP 400**:
 ## Project structure
 
 ```
-task-manager-api/
+teamflow/
 ├── pom.xml                       # Maven build + dependencies
 ├── Dockerfile                    # Multi-stage build (Maven -> small runtime)
 ├── docker-compose.yml            # App + MySQL together
+├── generate-jwt-keys.sh          # Creates local JWT keys (keys are gitignored)
 ├── k8s/
 │   └── deployment.yaml           # Kubernetes Deployment + Service
 ├── src/main/resources/
-│   ├── application.properties    # Configuration (DB, HTTP, etc.)
+│   ├── application.properties    # Configuration (DB, JWT, HTTP, etc.)
+│   ├── jwt/                      # RSA keypair (generated, never committed)
 │   └── import.sql                # Sample seed data
 ├── src/main/java/com/teamtask/
-│   ├── model/                    # Task entity + enums (maps to DB)
+│   ├── model/                    # Task + User entities, enums (map to DB)
+│   ├── security/                 # JWT creation + bootstrap admin
 │   ├── repository/               # Database access (Panache)
 │   ├── service/                  # Business logic + transactions
 │   ├── dto/                      # Request/response JSON shapes
