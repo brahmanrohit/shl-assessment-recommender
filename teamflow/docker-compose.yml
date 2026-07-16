@@ -27,11 +27,26 @@ services:
       timeout: 5s
       retries: 15
 
+  localstack:
+    # A local S3 clone: the app talks to it exactly like real AWS S3.
+    image: localstack/localstack:3
+    environment:
+      SERVICES: s3
+    ports:
+      - "4566:4566"
+    healthcheck:
+      test: ["CMD", "curl", "-s", "http://localhost:4566/_localstack/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+
   app:
     build: .                 # build the image using the Dockerfile in this folder
     depends_on:
       mysql:
         condition: service_healthy   # don't start until MySQL is healthy
+      localstack:
+        condition: service_healthy
     environment:
       # These override the defaults in application.properties.
       # Note the host is "mysql" - the service name above, not localhost.
@@ -41,6 +56,8 @@ services:
       # Local development EXPLICITLY opts in to the demo account + sample
       # data (demo@teamflow.local / demo1234). Real deployments never set this.
       DEMO_DATA: "true"
+      # S3 endpoint inside the compose network (LocalStack service above).
+      S3_ENDPOINT: http://localstack:4566
     ports:
       - "8080:8080"          # open http://localhost:8080/swagger-ui
 
