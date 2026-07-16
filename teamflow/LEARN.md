@@ -463,3 +463,47 @@ identically.
 18. **What's the cost of pagination?**
     -> Two queries per page (rows + count); for very deep pages OFFSET
     degrades and keyset pagination is the scalable alternative.
+
+---
+
+## 16. S3 file attachments (Phase 4)
+
+### Files don't belong in databases
+
+Blobs bloat backups, replication and RAM — databases are for structured
+rows. Object storage (S3) is built for blobs: cheap, durable, "infinite".
+So: the FILE goes to S3, a small `attachments` ROW (name, type, size,
+s3_key) goes to MySQL. The `s3_key` never leaves the server.
+
+### LocalStack = S3 on your laptop
+
+`docker-compose` runs LocalStack, a local AWS clone. The app talks to
+`http://localstack:4566` with the SAME SDK calls it would use against real
+AWS — moving to production is changing `S3_ENDPOINT` + credentials, zero
+code. (Caveat: presigned URLs generated inside compose say `localstack` as
+host; from your browser swap it for `localhost`.)
+
+### Presigned URLs — the interview favourite
+
+Download flow: client asks our API → we check access (same task/project
+gate as comments) → we SIGN a URL with our credentials, valid 15 minutes →
+client downloads DIRECTLY from S3. The bytes never stream through our API:
+no memory, no bandwidth, no blocking a worker thread on a slow download.
+Uploads here go through the API (we validate size/type first); at scale
+you'd presign PUTs too.
+
+### Upload validation (trust boundary — never skipped)
+
+Max 5 MB, content-type whitelist (png/jpeg/pdf/txt), filename sanitized,
+S3 key is `task-{id}/{uuid}-{name}` — UUIDs prevent collisions and path
+tricks. Reject early, store nothing you didn't agree to.
+
+### New interview questions you can now answer
+
+19. **Where do uploaded files go in your system?**
+    -> S3 (LocalStack locally); MySQL keeps only metadata + the key.
+    Downloads are short-lived presigned URLs straight from S3.
+
+20. **Why presigned URLs instead of streaming through the API?**
+    -> The API only authorizes + signs; S3 serves the bytes. No app memory
+    or bandwidth per download, and links expire on their own.

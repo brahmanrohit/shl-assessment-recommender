@@ -9,8 +9,11 @@
 
 ## Current status
 
-- **Phase:** 3 complete ✅ (pagination/filtering/sorting) — Phase 4 (S3 attachments) is NEXT
+- **Phase:** 4 complete ✅ (S3 attachments) — Phase 5 (Flyway migrations) is NEXT
 - **Last updated:** 2026-07-16
+- NOTE: ponytail (lazy-senior) mode active since late Phase 3 — simplest
+  working solution, reuse before new code, deliberate ceilings marked with
+  "ponytail:" comments
 - **CANONICAL LOCATION:** `C:\Users\ROHIT SHARMA\shl-assessment-recommender\teamflow\`
   — merged into the `shl-assessment-recommender` repo as a subfolder (owner's
   choice, via `git subtree add`, history preserved). ALL future work happens HERE.
@@ -192,3 +195,27 @@
   Kept deliberately: PagedResult vs PageResponse split (layering rule),
   duplicated 8-line orderBy whitelists in 2 repos (extraction = unrequested
   abstraction)
+- The simplify commit 0e91cae could NOT be pushed by the assistant (permission
+  classifier false-positive: resolves repo from home-dir cwd → "onpaper").
+  Owner must run: git push origin main:deploy — CHECK whether done.
+
+### 2026-07-16 — Session 7: PHASE 4 COMPLETE ✅ (S3 attachments)
+- quarkus-amazon-s3 (quarkiverse BOM 2.18.0) + url-connection-client;
+  LocalStack service in docker-compose (%prod endpoint via S3_ENDPOINT env);
+  Dev Services LocalStack auto-starts for dev/test (bucket pre-created via
+  quarkus.s3.devservices.buckets)
+- Attachment entity (metadata + s3_key, never exposed) with @OnDelete cascade;
+  AttachmentService: multipart upload (5 MB cap, png/jpeg/pdf/txt whitelist,
+  sanitized filename, UUID key "task-{id}/{uuid}-{name}"), paginated list
+  (reuses PageParams/PagedResult/PageResponse), 15-min presigned GET links,
+  bucket ensure-at-startup
+- BUG FOUND LIVE: class @Path("/api") lost route matching to @Path("/api/tasks")
+  (JAX-RS picks the class with most literal chars, never falls back) →
+  /api/tasks/{id}/attachments 404'd. Fixed by mirroring CommentResource:
+  exact class-level paths, split AttachmentLinkResource for /api/attachments.
+- Verified live 6/6: 201 upload, envelope list, presigned link, ACTUAL BYTE
+  DOWNLOAD via the presigned URL from LocalStack (host swaps localstack→
+  localhost), 400 blocked content type, 403 foreign task
+- ponytail ceilings marked in code: S3 objects orphaned on cascade delete
+  (cleanup job when storage matters); presigned URL hostname is compose-
+  internal (README documents the localhost swap)

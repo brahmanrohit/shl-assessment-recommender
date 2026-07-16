@@ -108,6 +108,25 @@ docker compose down
 | GET | `/api/tasks/{id}/comments` | Comments on a task | 200 |
 | POST | `/api/tasks/{id}/comments` | Add a comment (author = me) | 201 |
 
+### Attachments (require `Authorization: Bearer <token>`)
+
+| Method | Path | Description | Success code |
+|--------|------|-------------|--------------|
+| POST | `/api/tasks/{id}/attachments` | Multipart upload (field `file`, ≤5 MB, png/jpeg/pdf/txt) | 201 |
+| GET | `/api/tasks/{id}/attachments` | List a task's attachments | 200 |
+| GET | `/api/attachments/{id}/link` | 15-min presigned S3 download URL | 200 |
+
+Files live in **S3** (LocalStack locally — started by docker-compose);
+MySQL stores only metadata. Upload with curl:
+
+```bash
+curl -X POST http://localhost:8080/api/tasks/1/attachments \
+  -H "Authorization: Bearer <TOKEN>" \
+  -F "file=@notes.txt;type=text/plain"
+```
+> Presigned URLs generated inside compose use the `localstack` hostname —
+> replace it with `localhost` when downloading from your browser/host.
+
 **Pagination (all list endpoints):** `?page=0&size=20&sort=field,desc` —
 `size` caps at 100; sort fields are whitelisted per resource (tasks:
 `id,title,status,priority,dueDate,createdAt`; projects: `id,name,createdAt`);

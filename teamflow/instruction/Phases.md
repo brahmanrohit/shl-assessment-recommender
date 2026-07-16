@@ -95,9 +95,15 @@ query-parameter design.
 
 ---
 
-## Phase 4 — File attachments via S3
+## Phase 4 — File attachments via S3 ✅ DONE (2026-07-16)
 
 **Goal:** Upload/download attachments on tasks; files in S3, metadata in MySQL.
+
+> Shipped: quarkus-amazon-s3 + LocalStack in compose (Dev Services in test),
+> multipart upload (5 MB cap, type whitelist, sanitized names, UUID keys),
+> paginated metadata list, 15-min presigned download links, bucket created
+> at startup. Known ponytail ceiling: S3 objects orphaned when task/project
+> cascade-deletes rows — async cleanup when storage cost matters.
 
 **Scope**
 - Add AWS S3 SDK (quarkus-amazon-s3); run **LocalStack** in docker-compose for local dev
