@@ -11,9 +11,9 @@ import static org.hamcrest.CoreMatchers.equalTo;
  * Quarkus Dev Services, automatically starts a throwaway MySQL container via
  * Docker) so we can hit the real HTTP endpoints.
  *
- * Since Phase 1, /api/tasks requires a JWT - so these tests first sign up /
- * log in through the REAL auth endpoints and send the token, exactly like a
- * client would. (See AuthTestSupport for the helpers.)
+ * Since Phase 2, a task lives INSIDE a project, so tests first create a
+ * project (see AuthTestSupport helpers) - and ownership is enforced: a
+ * different member gets 403 on someone else's task.
  *
  * Run with:  mvn test    (requires Docker to be running)
  */
@@ -36,28 +36,45 @@ class TaskResourceTest {
     }
 
     @Test
-    void createTask_returns201WithTitle() {
-        String body = """
-            { "title": "Write the README", "priority": "HIGH" }
-            """;
+    void createTask_returns201WithProjectId() {
+        String token = AuthTestSupport.memberToken();
+        Integer projectId = AuthTestSupport.createProject(token, "Task create project");
 
         given()
-            .header("Authorization", "Bearer " + AuthTestSupport.memberToken())
+            .header("Authorization", "Bearer " + token)
             .contentType("application/json")
-            .body(body)
+            .body("""
+                { "title": "Write the README", "projectId": %d, "priority": "HIGH" }
+                """.formatted(projectId))
             .when().post("/api/tasks")
             .then()
             .statusCode(201)
             .body("title", equalTo("Write the README"))
-            .body("status", equalTo("TODO"));   // default applied
+            .body("status", equalTo("TODO"))            // default applied
+            .body("projectId", equalTo(projectId));     // relation persisted
     }
 
     @Test
-    void createTask_withoutTitle_returns400() {
+    void createTask_withoutTitleOrProject_returns400() {
         given()
             .header("Authorization", "Bearer " + AuthTestSupport.memberToken())
             .contentType("application/json")
             .body("{}")
+            .when().post("/api/tasks")
+            .then().statusCode(400);
+    }
+
+    @Test
+    void createTask_withUnknownAssignee_returns400() {
+        String token = AuthTestSupport.memberToken();
+        Integer projectId = AuthTestSupport.createProject(token, "Assignee check project");
+
+        given()
+            .header("Authorization", "Bearer " + token)
+            .contentType("application/json")
+            .body("""
+                { "title": "Ghost assignee", "projectId": %d, "assigneeId": 999999 }
+                """.formatted(projectId))
             .when().post("/api/tasks")
             .then().statusCode(400);
     }
@@ -71,36 +88,53 @@ class TaskResourceTest {
     }
 
     @Test
-    void deleteTask_asMember_returns403() {
-        // Members may not delete - only ADMIN can (authorization, not authentication).
-        Integer id = createSampleTask();
+    void getTask_ofAnotherMember_returns403() {
+        // Member #1 creates a project + task...
+        String owner = AuthTestSupport.memberToken();
+        Integer projectId = AuthTestSupport.createProject(owner, "Ownership project");
+        Integer taskId = AuthTestSupport.createTask(owner, projectId, "Private task");
+
+        // ...member #2 may NOT see it: authenticated (not 401) but forbidden.
+        given()
+            .header("Authorization", "Bearer " + AuthTestSupport.secondMemberToken())
+            .when().get("/api/tasks/" + taskId)
+            .then().statusCode(403);
+    }
+
+    @Test
+    void deleteTask_asProjectOwner_returns204() {
+        // Phase 2 ownership rule: the owner may delete tasks in their project.
+        String token = AuthTestSupport.memberToken();
+        Integer projectId = AuthTestSupport.createProject(token, "Delete-own project");
+        Integer taskId = AuthTestSupport.createTask(token, projectId, "Task to delete");
 
         given()
-            .header("Authorization", "Bearer " + AuthTestSupport.memberToken())
-            .when().delete("/api/tasks/" + id)
+            .header("Authorization", "Bearer " + token)
+            .when().delete("/api/tasks/" + taskId)
+            .then().statusCode(204);
+    }
+
+    @Test
+    void deleteTask_ofAnotherMember_returns403() {
+        String owner = AuthTestSupport.memberToken();
+        Integer projectId = AuthTestSupport.createProject(owner, "Delete-foreign project");
+        Integer taskId = AuthTestSupport.createTask(owner, projectId, "Protected task");
+
+        given()
+            .header("Authorization", "Bearer " + AuthTestSupport.secondMemberToken())
+            .when().delete("/api/tasks/" + taskId)
             .then().statusCode(403);
     }
 
     @Test
     void deleteTask_asAdmin_returns204() {
-        Integer id = createSampleTask();
+        String token = AuthTestSupport.memberToken();
+        Integer projectId = AuthTestSupport.createProject(token, "Delete-as-admin project");
+        Integer taskId = AuthTestSupport.createTask(token, projectId, "Task admin deletes");
 
         given()
             .header("Authorization", "Bearer " + AuthTestSupport.adminToken())
-            .when().delete("/api/tasks/" + id)
+            .when().delete("/api/tasks/" + taskId)
             .then().statusCode(204);
-    }
-
-    /** Creates a task as a member and returns its id. */
-    private Integer createSampleTask() {
-        return given()
-            .header("Authorization", "Bearer " + AuthTestSupport.memberToken())
-            .contentType("application/json")
-            .body("""
-                { "title": "Task to delete", "priority": "LOW" }
-                """)
-            .when().post("/api/tasks")
-            .then().statusCode(201)
-            .extract().path("id");
     }
 }
