@@ -1,0 +1,23 @@
+# Maven build output
+target/
+
+# IDE files
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+.project
+.classpath
+.settings/
+
+# Quarkus
+.quarkus/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Secrets / local overrides (never commit real credentials)
+.env
+*.local.properties

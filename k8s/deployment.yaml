@@ -1,0 +1,60 @@
+# ============================================================
+#  KUBERNETES MANIFEST (conceptual / for learning)
+#  This is how you would run the API on a Kubernetes cluster
+#  (which is what EKS on AWS or any managed K8s gives you).
+#
+#  A Deployment keeps N copies (replicas) of the app running and
+#  restarts them if they crash. A Service gives them one stable
+#  network address so other things can reach them.
+#
+#  Apply with:  kubectl apply -f k8s/deployment.yaml
+#  (You need a running cluster + the image pushed to a registry.)
+# ============================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: task-manager-api
+  labels:
+    app: task-manager-api
+spec:
+  replicas: 2                 # run 2 copies for availability
+  selector:
+    matchLabels:
+      app: task-manager-api
+  template:
+    metadata:
+      labels:
+        app: task-manager-api
+    spec:
+      containers:
+        - name: task-manager-api
+          image: your-registry/task-manager-api:1.0.0   # push your image here first
+          ports:
+            - containerPort: 8080
+          env:
+            - name: DB_URL
+              value: jdbc:mysql://mysql-service:3306/taskdb
+            - name: DB_USER
+              value: taskuser
+            - name: DB_PASSWORD
+              # In real life this comes from a Secret, never hard-coded.
+              value: taskpass
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: task-manager-service
+spec:
+  selector:
+    app: task-manager-api
+  ports:
+    - port: 80
+      targetPort: 8080
+  type: LoadBalancer         # gives the app an external address (e.g. on AWS)
