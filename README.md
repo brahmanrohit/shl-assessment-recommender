@@ -20,6 +20,10 @@ Solutions** through dialogue. It clarifies vague queries, recommends 1–10
 assessments, refines on constraint changes, compares assessments, and refuses
 anything out of scope — always grounded in a scraped catalog (no hallucinated URLs).
 
+> 📦 **Also in this repo:** [`teamflow/`](teamflow/) — a separate Java 21 + Quarkus +
+> MySQL + Docker backend project (REST API with layered architecture, validation,
+> and container-first deployment). See [teamflow/README.md](teamflow/README.md).
+
 ## API
 
 `GET /health` → `{"status":"ok"}` (200)

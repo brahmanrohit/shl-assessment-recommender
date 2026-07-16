@@ -11,18 +11,25 @@
 
 - **Phase:** 0 complete ✅ — Phase 1 (Users + JWT auth) is NEXT
 - **Last updated:** 2026-07-16
-- **Repo state:** all Phase 0 code committed on branch `master`
-  (initial commit `a4c88b3`), `instruction/` folder added
+- **CANONICAL LOCATION:** `C:\Users\ROHIT SHARMA\shl-assessment-recommender\teamflow\`
+  — merged into the `shl-assessment-recommender` repo as a subfolder (owner's
+  choice, via `git subtree add`, history preserved). ALL future work happens HERE.
+- Repo branch layout: local branch `main` pushes to `origin/deploy`
+  (the GitHub default branch is `deploy`)
+- The old standalone folder `C:\Users\ROHIT SHARMA\quarkus-task-api\` is now
+  DEPRECATED — don't edit it; owner may delete it after `docker compose down`
 
 ## Environment facts (this machine)
 
-- Windows 11, working dir `C:\Users\ROHIT SHARMA\quarkus-task-api`
+- Windows 11; work in `C:\Users\ROHIT SHARMA\shl-assessment-recommender\teamflow\`
 - **Docker installed** (v29.5.2) but Docker Desktop must be STARTED before
   `docker compose` works (we hit "cannot connect to daemon" when it was off)
 - **Java + Maven NOT installed locally** — that's fine: the multi-stage
   Dockerfile builds everything inside Docker
-- Folder rename to `teamflow` failed (folder locked, likely by VS Code) —
-  cosmetic only; use repo name `teamflow` on GitHub, rename locally later
+- Git identity for ALL commits: `brahmanrohit <rohitsharma20941@gmail.com>`
+  (owner's request: no AI co-author tags; commits must show as owner's)
+- `gh` CLI has multiple accounts on this machine — the `brahmanrohit` account
+  must be active for pushes (`gh auth switch -u brahmanrohit`)
 
 ## Decisions log (what + why)
 
@@ -33,6 +40,7 @@
 | 2026-07-16 | `drop-and-create` + import.sql for now | Instant demo data while learning; switches to Flyway in Phase 5 |
 | 2026-07-16 | Evolve ONE project through phases instead of many small apps | Depth impresses recruiters more than breadth |
 | 2026-07-16 | Chosen phase order: auth → relations → pagination → S3 → Flyway → CI → observability | Each phase = one interview-ready skill |
+| 2026-07-16 | Merged TeamFlow into `shl-assessment-recommender` repo as `teamflow/` subfolder | Owner's choice (single repo); mentor recommended separate repo — owner decided; subtree merge kept all commits |
 
 ## What exists right now (Phase 0 inventory)
 
@@ -49,15 +57,17 @@
 ## Known issues / open items
 
 - [x] ~~Phase 0 not yet run end-to-end~~ ✅ VERIFIED 2026-07-16 (see session log)
-- [ ] Project not yet pushed to GitHub (repo name to use: `teamflow`)
+- [x] ~~Not yet pushed to GitHub~~ ✅ merged into shl-assessment-recommender, push in progress
 - [ ] Owner still working through LEARN.md sections
+- [ ] Old `quarkus-task-api/` folder to be cleaned up by owner (run
+      `docker compose down` there first if containers still running)
 
 ## Next actions (in order)
 
 1. Owner explores the running API at http://localhost:8080/swagger-ui
 2. Owner studies LEARN.md sections 0–5 against the code
-3. Push to GitHub as `teamflow`
-4. Begin **Phase 1** (see Phases.md): User entity → signup → login → JWT → protect endpoints
+3. Revisit project architecture together with owner (owner requested), then
+   begin **Phase 1** (see Phases.md): User entity → signup → login → JWT → protect endpoints
 
 ## Session log
 
@@ -78,3 +88,12 @@
   - GET /api/tasks?status=IN_PROGRESS → 200, filtered to 2 rows
 - Lesson learned by owner: `docker compose` must run from the folder containing
   docker-compose.yml; PowerShell `cd` alone only prints the current directory
+
+### 2026-07-16 — Session 3: MERGED INTO GITHUB REPO ✅
+- Re-authored all commits to `brahmanrohit <rohitsharma20941@gmail.com>` so they
+  link to the owner's GitHub profile (no AI co-author tags, per owner's request)
+- `git subtree add --prefix=teamflow` merged the project into
+  `shl-assessment-recommender` (history preserved: 3 commits + merge commit)
+- Added a pointer to `teamflow/` in the SHL repo's root README
+- Push target: local `main` → `origin/deploy` (GitHub default branch)
+- Owner wants to revisit architecture together before starting Phase 1
