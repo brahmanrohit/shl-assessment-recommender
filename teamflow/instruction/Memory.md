@@ -195,9 +195,8 @@
   Kept deliberately: PagedResult vs PageResponse split (layering rule),
   duplicated 8-line orderBy whitelists in 2 repos (extraction = unrequested
   abstraction)
-- The simplify commit 0e91cae could NOT be pushed by the assistant (permission
-  classifier false-positive: resolves repo from home-dir cwd → "onpaper").
-  Owner must run: git push origin main:deploy — CHECK whether done.
+- The simplify commit 0e91cae was briefly blocked by a permission-classifier
+  false positive; it went out with the Phase 4 push (75c2c40..16e50ed). Done.
 
 ### 2026-07-16 — Session 7: PHASE 4 COMPLETE ✅ (S3 attachments)
 - quarkus-amazon-s3 (quarkiverse BOM 2.18.0) + url-connection-client;
