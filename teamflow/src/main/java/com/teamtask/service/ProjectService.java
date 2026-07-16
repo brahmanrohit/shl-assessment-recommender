@@ -1,5 +1,6 @@
 package com.teamtask.service;
 
+import com.teamtask.dto.PageParams;
 import com.teamtask.dto.ProjectRequest;
 import com.teamtask.exception.AccessDeniedException;
 import com.teamtask.exception.ProjectNotFoundException;
@@ -8,6 +9,7 @@ import com.teamtask.model.User;
 import com.teamtask.repository.ProjectRepository;
 import com.teamtask.repository.UserRepository;
 import com.teamtask.security.CurrentUser;
+import io.quarkus.panache.common.Page;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.transaction.Transactional;
 
@@ -31,12 +33,15 @@ public class ProjectService {
         this.users = users;
     }
 
-    /** My projects - or every project if I'm an admin. */
+    /** One PAGE of my projects - or of every project if I'm an admin. */
     @Transactional
-    public List<Project> listVisible(CurrentUser user) {
-        return user.isAdmin()
-                ? projects.listAllWithOwner()
-                : projects.listByOwner(user.id());
+    public PagedResult<Project> listVisible(CurrentUser user, PageParams pageParams) {
+        var query = user.isAdmin()
+                ? projects.queryAll(pageParams.sortField(), pageParams.ascending())
+                : projects.queryByOwner(user.id(), pageParams.sortField(), pageParams.ascending());
+        List<Project> content = query.page(Page.of(pageParams.page(), pageParams.size())).list();
+        long total = user.isAdmin() ? projects.count() : projects.countByOwner(user.id());
+        return new PagedResult<>(content, total);
     }
 
     /**

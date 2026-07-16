@@ -1,12 +1,14 @@
 package com.teamtask.service;
 
 import com.teamtask.dto.CommentRequest;
+import com.teamtask.dto.PageParams;
 import com.teamtask.model.Comment;
 import com.teamtask.model.Task;
 import com.teamtask.model.User;
 import com.teamtask.repository.CommentRepository;
 import com.teamtask.repository.UserRepository;
 import com.teamtask.security.CurrentUser;
+import io.quarkus.panache.common.Page;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.transaction.Transactional;
 
@@ -30,10 +32,15 @@ public class CommentService {
         this.users = users;
     }
 
+    /** One PAGE of a task's comments, oldest first (fixed conversation order). */
     @Transactional
-    public List<Comment> listForTask(Long taskId, CurrentUser user) {
+    public PagedResult<Comment> listForTask(Long taskId, CurrentUser user, PageParams pageParams) {
         tasks.findAccessible(taskId, user); // 404/403 if not allowed
-        return comments.listByTask(taskId);
+        List<Comment> content = comments.queryByTask(taskId)
+                .page(Page.of(pageParams.page(), pageParams.size()))
+                .list();
+        long total = comments.countByTask(taskId);
+        return new PagedResult<>(content, total);
     }
 
     @Transactional

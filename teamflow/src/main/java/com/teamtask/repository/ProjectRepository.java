@@ -1,36 +1,60 @@
 package com.teamtask.repository;
 
+import com.teamtask.exception.InvalidQueryParameterException;
 import com.teamtask.model.Project;
+import io.quarkus.hibernate.orm.panache.PanacheQuery;
 import io.quarkus.hibernate.orm.panache.PanacheRepository;
 import jakarta.enterprise.context.ApplicationScoped;
 
-import java.util.List;
+import java.util.Map;
 
 /**
  * Data access for projects.
  *
- * Note the "join fetch p.owner" in the queries: it loads the owner in the
- * SAME SQL query (one query total). Without it, mapping each project to a
- * response that shows the owner's name would fire one extra SELECT per row -
- * the classic N+1 problem. Watch the SQL log to see the difference.
+ * "join fetch p.owner" loads the owner in the SAME SQL query (the DTO shows
+ * the owner's name - without the fetch that's an N+1). Fetching a *-to-one
+ * relation is pagination-safe: it never multiplies rows.
+ *
+ * Sorting goes through a whitelist, same rules as TaskRepository.
  */
 @ApplicationScoped
 public class ProjectRepository implements PanacheRepository<Project> {
 
-    /** All projects, owner pre-loaded (ADMIN view). */
-    public List<Project> listAllWithOwner() {
-        return find("select p from Project p join fetch p.owner order by p.id").list();
+    private static final String LIST_BASE =
+            "select p from Project p join fetch p.owner o";
+
+    private static final Map<String, String> SORTABLE = Map.of(
+            "id", "p.id",
+            "name", "p.name",
+            "createdAt", "p.createdAt");
+
+    /** Page of all projects (ADMIN view). */
+    public PanacheQuery<Project> queryAll(String sortField, boolean ascending) {
+        return find(LIST_BASE + orderBy(sortField, ascending), Map.of());
     }
 
-    /** Projects owned by one user, owner pre-loaded. */
-    public List<Project> listByOwner(Long ownerId) {
-        return find("select p from Project p join fetch p.owner o where o.id = ?1 order by p.id", ownerId)
-                .list();
+    /** Page of one user's projects. */
+    public PanacheQuery<Project> queryByOwner(Long ownerId, String sortField, boolean ascending) {
+        return find(LIST_BASE + " where o.id = :ownerId" + orderBy(sortField, ascending),
+                Map.of("ownerId", ownerId));
+    }
+
+    public long countByOwner(Long ownerId) {
+        return count("owner.id = ?1", ownerId);
     }
 
     /** One project with its owner, or null. */
     public Project findByIdWithOwner(Long id) {
         return find("select p from Project p join fetch p.owner where p.id = ?1", id)
                 .firstResult();
+    }
+
+    private String orderBy(String sortField, boolean ascending) {
+        String path = SORTABLE.get(sortField);
+        if (path == null) {
+            throw new InvalidQueryParameterException(
+                    "Cannot sort projects by '" + sortField + "'. Allowed: " + String.join(", ", SORTABLE.keySet()));
+        }
+        return " order by " + path + (ascending ? " asc" : " desc") + ", p.id";
     }
 }

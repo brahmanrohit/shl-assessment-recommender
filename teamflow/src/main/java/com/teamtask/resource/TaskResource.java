@@ -1,10 +1,14 @@
 package com.teamtask.resource;
 
+import com.teamtask.dto.PageParams;
+import com.teamtask.dto.PageResponse;
 import com.teamtask.dto.TaskRequest;
 import com.teamtask.dto.TaskResponse;
 import com.teamtask.model.Task;
+import com.teamtask.model.TaskPriority;
 import com.teamtask.model.TaskStatus;
 import com.teamtask.security.CurrentUser;
+import com.teamtask.service.PagedResult;
 import com.teamtask.service.TaskService;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.validation.Valid;
@@ -19,8 +23,6 @@ import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
-
-import java.util.List;
 
 /**
  * The RESOURCE is the REST layer: it maps HTTP requests to Java methods.
@@ -52,12 +54,23 @@ public class TaskResource {
     }
 
     /**
-     * List MY tasks (all tasks for admins). ?status=IN_PROGRESS filters.
+     * List MY tasks (all tasks for admins), PAGINATED (Phase 3):
+     *   ?status=TODO&priority=HIGH        filters
+     *   ?page=0&size=20                   which slice (size capped at 100)
+     *   ?sort=dueDate,desc                whitelisted sort field
+     * Returns the standard envelope: content/page/size/totalElements/totalPages.
      */
     @GET
-    public List<TaskResponse> list(@QueryParam("status") TaskStatus status) {
-        List<Task> tasks = service.listVisible(currentUser, status);
-        return tasks.stream().map(TaskResponse::from).toList();
+    public PageResponse<TaskResponse> list(@QueryParam("status") TaskStatus status,
+                                           @QueryParam("priority") TaskPriority priority,
+                                           @QueryParam("page") Integer page,
+                                           @QueryParam("size") Integer size,
+                                           @QueryParam("sort") String sort) {
+        PageParams pageParams = PageParams.from(page, size, sort, "id");
+        PagedResult<Task> result = service.listVisible(currentUser, status, priority, pageParams);
+        return PageResponse.of(
+                result.content().stream().map(TaskResponse::from).toList(),
+                pageParams.page(), pageParams.size(), result.totalElements());
     }
 
     @GET

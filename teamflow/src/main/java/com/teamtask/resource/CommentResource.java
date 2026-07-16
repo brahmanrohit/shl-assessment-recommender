@@ -2,9 +2,12 @@ package com.teamtask.resource;
 
 import com.teamtask.dto.CommentRequest;
 import com.teamtask.dto.CommentResponse;
+import com.teamtask.dto.PageParams;
+import com.teamtask.dto.PageResponse;
 import com.teamtask.model.Comment;
 import com.teamtask.security.CurrentUser;
 import com.teamtask.service.CommentService;
+import com.teamtask.service.PagedResult;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.validation.Valid;
 import jakarta.ws.rs.Consumes;
@@ -13,10 +16,9 @@ import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
-
-import java.util.List;
 
 /**
  * Comments live UNDER a task (nested resource):
@@ -38,10 +40,16 @@ public class CommentResource {
         this.currentUser = currentUser;
     }
 
+    /** Paginated, always oldest-first (fixed conversation order, no ?sort). */
     @GET
-    public List<CommentResponse> list(@PathParam("taskId") Long taskId) {
-        return commentService.listForTask(taskId, currentUser)
-                .stream().map(CommentResponse::from).toList();
+    public PageResponse<CommentResponse> list(@PathParam("taskId") Long taskId,
+                                              @QueryParam("page") Integer page,
+                                              @QueryParam("size") Integer size) {
+        PageParams pageParams = PageParams.from(page, size, null, "createdAt");
+        PagedResult<Comment> result = commentService.listForTask(taskId, currentUser, pageParams);
+        return PageResponse.of(
+                result.content().stream().map(CommentResponse::from).toList(),
+                pageParams.page(), pageParams.size(), result.totalElements());
     }
 
     @POST

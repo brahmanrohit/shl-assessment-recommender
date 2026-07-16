@@ -1,10 +1,14 @@
 package com.teamtask.resource;
 
+import com.teamtask.dto.PageParams;
+import com.teamtask.dto.PageResponse;
 import com.teamtask.dto.ProjectRequest;
 import com.teamtask.dto.ProjectResponse;
 import com.teamtask.dto.TaskResponse;
 import com.teamtask.model.Project;
+import com.teamtask.model.Task;
 import com.teamtask.security.CurrentUser;
+import com.teamtask.service.PagedResult;
 import com.teamtask.service.ProjectService;
 import com.teamtask.service.TaskService;
 import jakarta.annotation.security.RolesAllowed;
@@ -17,10 +21,9 @@ import jakarta.ws.rs.PUT;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
-
-import java.util.List;
 
 /**
  * REST endpoints for projects.
@@ -52,10 +55,16 @@ public class ProjectResource {
         this.currentUser = currentUser;
     }
 
+    /** Paginated: ?page=&size=&sort=name,asc (whitelist: id, name, createdAt). */
     @GET
-    public List<ProjectResponse> list() {
-        return projectService.listVisible(currentUser)
-                .stream().map(ProjectResponse::from).toList();
+    public PageResponse<ProjectResponse> list(@QueryParam("page") Integer page,
+                                              @QueryParam("size") Integer size,
+                                              @QueryParam("sort") String sort) {
+        PageParams pageParams = PageParams.from(page, size, sort, "id");
+        PagedResult<Project> result = projectService.listVisible(currentUser, pageParams);
+        return PageResponse.of(
+                result.content().stream().map(ProjectResponse::from).toList(),
+                pageParams.page(), pageParams.size(), result.totalElements());
     }
 
     @GET
@@ -64,12 +73,18 @@ public class ProjectResource {
         return ProjectResponse.from(projectService.findAccessible(id, currentUser));
     }
 
-    /** Nested route: the tasks INSIDE a project. */
+    /** Nested route: the tasks INSIDE a project, paginated like /api/tasks. */
     @GET
     @Path("/{id}/tasks")
-    public List<TaskResponse> tasks(@PathParam("id") Long id) {
-        return taskService.listByProject(id, currentUser)
-                .stream().map(TaskResponse::from).toList();
+    public PageResponse<TaskResponse> tasks(@PathParam("id") Long id,
+                                            @QueryParam("page") Integer page,
+                                            @QueryParam("size") Integer size,
+                                            @QueryParam("sort") String sort) {
+        PageParams pageParams = PageParams.from(page, size, sort, "id");
+        PagedResult<Task> result = taskService.listByProject(id, currentUser, pageParams);
+        return PageResponse.of(
+                result.content().stream().map(TaskResponse::from).toList(),
+                pageParams.page(), pageParams.size(), result.totalElements());
     }
 
     @POST

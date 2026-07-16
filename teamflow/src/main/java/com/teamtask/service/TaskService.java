@@ -1,16 +1,19 @@
 package com.teamtask.service;
 
+import com.teamtask.dto.PageParams;
 import com.teamtask.dto.TaskRequest;
 import com.teamtask.exception.AccessDeniedException;
 import com.teamtask.exception.InvalidReferenceException;
 import com.teamtask.exception.TaskNotFoundException;
 import com.teamtask.model.Project;
 import com.teamtask.model.Task;
+import com.teamtask.model.TaskPriority;
 import com.teamtask.model.TaskStatus;
 import com.teamtask.model.User;
 import com.teamtask.repository.TaskRepository;
 import com.teamtask.repository.UserRepository;
 import com.teamtask.security.CurrentUser;
+import io.quarkus.panache.common.Page;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.transaction.Transactional;
 
@@ -43,17 +46,29 @@ public class TaskService {
         this.users = users;
     }
 
-    /** Tasks I'm allowed to see, optionally filtered by status. */
+    /** One PAGE of tasks I'm allowed to see, with filters + total count. */
     @Transactional
-    public List<Task> listVisible(CurrentUser user, TaskStatus status) {
-        return repository.listVisible(user.id(), user.isAdmin(), status);
+    public PagedResult<Task> listVisible(CurrentUser user, TaskStatus status,
+                                         TaskPriority priority, PageParams pageParams) {
+        List<Task> content = repository
+                .queryVisible(user.id(), user.isAdmin(), status, priority,
+                        pageParams.sortField(), pageParams.ascending())
+                .page(Page.of(pageParams.page(), pageParams.size()))
+                .list();
+        long total = repository.countVisible(user.id(), user.isAdmin(), status, priority);
+        return new PagedResult<>(content, total);
     }
 
-    /** Tasks of one project - after checking I may see that project. */
+    /** One PAGE of a project's tasks - after checking I may see that project. */
     @Transactional
-    public List<Task> listByProject(Long projectId, CurrentUser user) {
+    public PagedResult<Task> listByProject(Long projectId, CurrentUser user, PageParams pageParams) {
         projectService.findAccessible(projectId, user); // 404/403 gate
-        return repository.listByProject(projectId);
+        List<Task> content = repository
+                .queryByProject(projectId, pageParams.sortField(), pageParams.ascending())
+                .page(Page.of(pageParams.page(), pageParams.size()))
+                .list();
+        long total = repository.countByProject(projectId);
+        return new PagedResult<>(content, total);
     }
 
     /**
