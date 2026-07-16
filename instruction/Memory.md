@@ -48,16 +48,16 @@
 
 ## Known issues / open items
 
-- [ ] Phase 0 not yet run end-to-end on this machine (needs Docker Desktop running)
+- [x] ~~Phase 0 not yet run end-to-end~~ ✅ VERIFIED 2026-07-16 (see session log)
 - [ ] Project not yet pushed to GitHub (repo name to use: `teamflow`)
 - [ ] Owner still working through LEARN.md sections
 
 ## Next actions (in order)
 
-1. Start Docker Desktop → `docker compose up --build` → verify at
-   http://localhost:8080/swagger-ui (Phase 0 verification)
+1. Owner explores the running API at http://localhost:8080/swagger-ui
 2. Owner studies LEARN.md sections 0–5 against the code
-3. Begin **Phase 1** (see Phases.md): User entity → signup → login → JWT → protect endpoints
+3. Push to GitHub as `teamflow`
+4. Begin **Phase 1** (see Phases.md): User entity → signup → login → JWT → protect endpoints
 
 ## Session log
 
@@ -65,3 +65,16 @@
 - Built entire Phase 0 (23 files), committed `a4c88b3`
 - Docker build attempt failed only because Docker Desktop daemon wasn't running
 - Created `instruction/` folder: PRD, Architecture, Rules, Phases, Design, Memory
+
+### 2026-07-16 — Session 2: PHASE 0 VERIFIED ✅
+- Owner started Docker Desktop and ran `docker compose up --build` successfully
+- Maven build compiled clean inside Docker (~79s); image `quarkus-task-api-app` built
+- Both containers healthy: app on :8080, MySQL on :3306
+- End-to-end tests all passed against the live API:
+  - GET /api/tasks → 200, returned all 5 seeded rows from MySQL
+  - POST valid task → 201, id 6 created, status defaulted to TODO
+  - POST blank title → 400 `{"fieldErrors":{"title":"Title is required"}}`
+  - GET /api/tasks/999 → 404 clean error JSON
+  - GET /api/tasks?status=IN_PROGRESS → 200, filtered to 2 rows
+- Lesson learned by owner: `docker compose` must run from the folder containing
+  docker-compose.yml; PowerShell `cd` alone only prints the current directory
