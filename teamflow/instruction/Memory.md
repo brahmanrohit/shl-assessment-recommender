@@ -9,7 +9,7 @@
 
 ## Current status
 
-- **Phase:** 1 complete ✅ (Users + JWT auth) — Phase 2 (Projects & Comments relations) is NEXT
+- **Phase:** 2 complete ✅ (Projects & Comments relations + ownership) — Phase 3 (pagination/filtering/sorting) is NEXT
 - **Last updated:** 2026-07-16
 - **CANONICAL LOCATION:** `C:\Users\ROHIT SHARMA\shl-assessment-recommender\teamflow\`
   — merged into the `shl-assessment-recommender` repo as a subfolder (owner's
@@ -64,10 +64,10 @@
 
 ## Next actions (in order)
 
-1. Owner studies LEARN.md section 13 (auth) + plays with signup/login in Swagger UI
-2. Owner does the LEARN.md exercises (sections 12) to cement Phase 0+1
-3. Begin **Phase 2** (see Phases.md): Project & Comment entities, relations,
-   ownership checks
+1. Owner studies LEARN.md sections 13 (auth) + 14 (relations/N+1) — the two
+   most interview-critical sections — and plays with the two-user 403 demo
+2. Owner does the LEARN.md exercises to cement Phases 0–2
+3. Begin **Phase 3** (see Phases.md): pagination, filtering, sorting
 
 ## Session log
 
@@ -116,3 +116,50 @@
   but NOT executed locally (no Maven on machine; Dev Services needs local mvn) —
   they will run in CI (Phase 6). Honest gap, noted deliberately.
 - LEARN.md gained section 13 (auth deep-dive + 4 new interview Q&As)
+
+### 2026-07-16 — Session 5: PHASE 2 COMPLETE ✅ (relations + ownership)
+- Schema is now relational: users → projects (owner_id) → tasks (project_id,
+  optional assignee_id) → comments (task_id, author_id); cascade REMOVE +
+  orphanRemoval down the chain (verified live: deleting a project 404s its task)
+- New: Project + Comment entities, ProjectRepository/CommentRepository
+  (all list queries use join fetch), ProjectService (findAccessible = single
+  ownership gatekeeper: 404 unknown / 403 not-yours / admin bypass),
+  CommentService, ProjectResource (/api/projects + /{id}/tasks),
+  CommentResource (/api/tasks/{taskId}/comments), security/CurrentUser
+  (@RequestScoped JWT wrapper), AccessDenied→403 + ProjectNotFound→404 +
+  InvalidReference→400 mappers
+- TaskService/TaskResource reworked: every operation scoped to caller;
+  task create/update verifies target project ownership (incl. cross-project
+  move); assigneeId validated (unknown → 400)
+- import.sql DELETED → bootstrap/DemoDataBootstrap (demo@teamflow.local /
+  demo1234, 1 project, 5 tasks, 2 comments; DEMO_DATA=false disables)
+- Verified live 11/11: seeded relations render (ownerName/assigneeName),
+  foreign project read/create → 403, scoped lists ([] for new user),
+  own project+task+comment → 201s, cascade delete, admin-sees-all,
+  unknown assignee → 400
+- N+1 proof: GET /api/tasks (5 tasks + project + assignee) = EXACTLY 1 SQL
+  select, measured in the Hibernate log (before/after counter delta)
+- Multi-agent adversarial review (4 lenses × finders, 3 skeptics per finding,
+  34 agents): 9 confirmed, 1 rejected. Fixes applied before push:
+  1. Task DELETE aligned to ownership rule (owner-or-admin; was admin-only,
+     contradicting our own Phase 2 rule) — Phase 1 note marked superseded
+  2. DB-level ON DELETE CASCADE (@OnDelete) replaced JPA cascade REMOVE —
+     project delete is now ONE SQL statement, not 1+N selects + M+N+1 deletes
+  3. List queries slimmed: no `join fetch t.project` (DTO only reads the id,
+     which the lazy proxy has for free); plain join only for owner filtering
+  4. Demo data now OPT-IN (default false; docker-compose sets DEMO_DATA=true)
+     — committed default-on demo credentials were CWE-1188
+  5. @Positive added to assigneeId (Rules.md: every DTO field validated)
+  6. 6 missing endpoint tests added (project list/get-404/put-403/delete-403/
+     tasks-403, delete-own-task-204)
+  7. Design.md now documents the body-reference status convention
+     (container ref projectId→404/403; attribute ref assigneeId→400)
+  8. ACCEPTED dev-only risk (documented): stale 24h JWTs survive
+     drop-and-create restarts and ids restart from 1, so an old token can map
+     to a new user. Real fix = Phase 5 Flyway (no more drop-and-create).
+     ALSO backlog: admin default password (admin1234) should become env-only
+     before any real deployment.
+  Rejected by skeptics: "assigneeId lets members enumerate display names"
+  (signup is open; names already visible in comments; nothing gained).
+- 21 tests across Auth/Task/Project/Comment suites incl. two-member ownership
+  boundaries (still CI-pending, Phase 6)

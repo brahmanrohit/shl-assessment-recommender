@@ -38,6 +38,16 @@
 | Duplicate (e.g. email already registered) | 409 |
 | Unexpected server bug | 500 |
 
+### 3.1 Body references (decided in the Phase 2 review)
+
+When a request BODY references another row by id, the status depends on the
+reference's role:
+- **Container reference** (`projectId` — decides WHERE the resource lives and
+  whose access boundary applies): treated as a resource lookup → **404** if
+  unknown, **403** if not yours.
+- **Attribute reference** (`assigneeId` — just data on the resource): a bad
+  id is malformed input → **400** with a message naming the field.
+
 ## 4. Error shape (every error, no exceptions)
 
 ```json

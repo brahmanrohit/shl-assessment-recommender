@@ -41,11 +41,17 @@ Learning value > feature count. Depth > breadth.
 - Docker + Docker Compose (app + MySQL)
 - Integration tests
 
+### ✅ Done (Phase 1 — auth, completed 2026-07-16)
+- User accounts: signup (always MEMBER) + login, BCrypt password hashing
+- RS256-signed JWTs (24h) carrying the role; keys generated, never committed
+- All task endpoints require a token; DELETE is ADMIN-only (401 vs 403)
+- Bootstrap ADMIN created at startup from env-configurable credentials
+- Verified live: 9/9 security behaviors, incl. 409 duplicate email and
+  no-password-hash-leak guarantees
+
 ### 🎯 To build (in order — see Phases.md for details)
-1. **User accounts + JWT auth** — signup, login, BCrypt password hashing,
-   roles (ADMIN / MEMBER), protected endpoints
 2. **Projects & comments (relations)** — Project → has many Tasks → has many
-   Comments; tasks belong to projects; proper foreign keys
+   Comments; tasks belong to projects; proper foreign keys; ownership checks
 3. **Pagination, filtering, sorting** — no endpoint ever returns unbounded lists
 4. **File attachments via S3** — upload/download task attachments
    (LocalStack locally, real S3 on AWS)

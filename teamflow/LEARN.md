@@ -309,8 +309,88 @@ We never wrote that filter code — declaring the *rules* (`@RolesAllowed`,
 
 9. **Difference between 401 and 403?**
    -> 401 = not authenticated (missing/invalid token). 403 = authenticated
-   but not authorized (e.g. a MEMBER calling an ADMIN-only endpoint).
+   but not authorized (e.g. touching a project that belongs to someone else).
 
 10. **Why BCrypt and not SHA-256 for passwords?**
     -> SHA-256 is fast — attackers can try billions of guesses per second.
     BCrypt is deliberately slow and salted, exactly what you want for passwords.
+
+---
+
+## 14. Entity relations & the N+1 problem (Phase 2)
+
+This is THE core database skill the job posting asks for. Learn it from
+`Project.java`, `Comment.java`, and the updated `Task.java`.
+
+### The schema (say it while drawing arrows)
+
+```
+users ──owns──> projects ──contain──> tasks ──have──> comments
+                                        └── assignee ──> users (optional)
+```
+
+Every arrow is a **foreign key** (FK): a column holding the id of a row in
+another table (`tasks.project_id -> projects.id`). The database REFUSES rows
+that point at nothing — that's *referential integrity*. Run
+`SHOW CREATE TABLE tasks;` in MySQL and see the constraints Hibernate made.
+
+### The annotations that build those arrows
+
+- `@ManyToOne` — MANY tasks point to ONE project. This side owns the FK
+  column (`@JoinColumn(name = "project_id")`).
+- `@OneToMany(mappedBy = "project")` — the mirror side, a Java convenience
+  list. "mappedBy" = "the FK lives over there, don't make a second one."
+- `cascade = REMOVE, orphanRemoval = true` — delete a project and its tasks
+  die with it; each task takes its comments along. One DELETE, whole subtree.
+
+### LAZY vs EAGER (interviewers love this)
+
+`fetch = FetchType.LAZY` = don't load the related row until someone calls a
+getter needing its DATA. We use LAZY everywhere because EAGER would join in
+the owner/project/assignee on EVERY query whether needed or not.
+Subtlety worth quoting in an interview: on a lazy proxy, `.getId()` does
+NOT hit the database (the id was already in the FK column), but
+`.getDisplayName()` DOES.
+
+### The N+1 problem — and our fix
+
+Naive code: load 100 tasks (1 query), then map each to JSON touching
+`task.getAssignee().getDisplayName()` → 100 extra SELECTs. Total: 101
+queries. That's N+1, the most common real-world ORM performance bug.
+
+Our fix: the repository queries say `join fetch` —
+`select t from Task t join fetch t.project left join fetch t.assignee` —
+one SQL query loads everything. Proof: watch the SQL log while calling
+`GET /api/tasks`; you'll see ONE select, not dozens. (Why `left` join fetch
+for assignee? A plain join would silently DROP tasks with no assignee.)
+
+### Two-level authorization (roles + ownership)
+
+Phase 1 answered "are you logged in, and what role?" (@RolesAllowed).
+Phase 2 adds *object-level* checks: "is this specific project YOURS?" —
+`ProjectService.findAccessible()` is the single gatekeeper; tasks and
+comments delegate to it, so the rule lives in exactly one place. Skipping
+this check is the OWASP #1 API vulnerability (BOLA/IDOR): being logged in
+would let you read ANYONE's data by guessing ids. Try it: create two users
+and fetch the other's project — you get our clean 403.
+
+### New interview questions you can now answer
+
+11. **How do you model one-to-many in JPA?**
+    -> @ManyToOne on the child (owns the FK column) + mappedBy @OneToMany on
+    the parent; LAZY fetching; cascade only where lifecycle is truly shared.
+
+12. **What is the N+1 problem and how do you fix it?**
+    -> 1 query for the list + N lazy loads while mapping rows. Fix: fetch the
+    needed relations in the same query (join fetch / EntityGraph), verify in
+    the SQL log.
+
+13. **How do you stop users reading each other's data?**
+    -> Object-level authorization: every read/write resolves the resource,
+    then checks the owner against the JWT's user id before proceeding —
+    404 if it doesn't exist, 403 if it isn't yours.
+
+14. **Why did your seed data move from import.sql to Java code?**
+    -> Phase 2 rows need BCrypt-hashed users and an FK chain
+    (users → projects → tasks); a static SQL file can't hash passwords, so a
+    startup bean seeds it — and can be disabled by env var in production.

@@ -13,9 +13,12 @@ Swagger UI, Docker multi-stage build, Docker Compose, integration tests.
 
 ---
 
-## Phase 1 — Users + JWT authentication 🎯 NEXT
+## Phase 1 — Users + JWT authentication ✅ DONE (2026-07-16)
 
 **Goal:** Real signup/login; every task endpoint requires a valid token.
+
+> Shipped as designed, plus: Swagger "Authorize" button, generate-jwt-keys.sh,
+> Docker build generates its own keypair (keys gitignored). Verified live 9/9.
 
 **Scope**
 - `User` entity (email unique, passwordHash, displayName, role ADMIN|MEMBER)
@@ -23,7 +26,8 @@ Swagger UI, Docker multi-stage build, Docker Compose, integration tests.
 - `POST /api/auth/login` — verifies password, returns a signed JWT
 - Add `quarkus-smallrye-jwt` + `quarkus-smallrye-jwt-build`; generate RSA keypair for signing
 - Protect all `/api/tasks` endpoints: `@RolesAllowed({"ADMIN","MEMBER"})`
-- Only ADMIN may DELETE tasks
+- Only ADMIN may DELETE tasks *(superseded in Phase 2: the ownership rule
+  applies to deletes too — project owner or admin)*
 - Never return passwordHash in any response
 
 **What you LEARN:** password hashing vs encryption, what a JWT actually is
@@ -37,7 +41,15 @@ Swagger UI, Docker multi-stage build, Docker Compose, integration tests.
 
 ---
 
-## Phase 2 — Projects & Comments (entity relations)
+## Phase 2 — Projects & Comments (entity relations) ✅ DONE (2026-07-16)
+
+> Shipped as designed, then hardened by a multi-agent adversarial review
+> (4 lenses, 3 skeptics per finding): DB-level ON DELETE CASCADE instead of
+> row-by-row JPA cascade, list queries slimmed (no pointless project fetch),
+> task DELETE aligned to the ownership rule, demo data made opt-in
+> (DEMO_DATA=true only in docker-compose), @Positive on assigneeId, extra
+> ownership tests. Known accepted dev-only risk: stale JWTs across
+> drop-and-create restarts can map to reused ids — closed by Phase 5.
 
 **Goal:** Real relational schema: Project → Tasks → Comments.
 
@@ -47,7 +59,11 @@ Swagger UI, Docker multi-stage build, Docker Compose, integration tests.
 - `Comment` entity (task, author, body, createdAt)
 - Endpoints: CRUD projects; `GET /api/projects/{id}/tasks`;
   `POST /api/tasks/{id}/comments`; `GET /api/tasks/{id}/comments`
-- Only project members/owner can see or modify its tasks (simple ownership check)
+- Ownership rule (decided at build time): a project and everything inside it
+  is visible/modifiable by its OWNER and by ADMINs — other members get 403.
+  (A member-list/sharing table is future work, not this phase.)
+- Replace import.sql with a code-based DemoDataBootstrap (seed rows now need
+  FK-valid users, which only exist at runtime)
 
 **What you LEARN:** @ManyToOne/@OneToMany, foreign keys, LAZY vs EAGER
 fetching, the N+1 query problem and how to spot it in the SQL log.
@@ -101,6 +117,8 @@ why files don't belong in MySQL.
 **What you LEARN:** why prod DBs are never auto-generated, migration versioning.
 
 **Definition of Done:** clean `docker compose up` builds schema via Flyway only.
+Also closes the accepted Phase 2 risk: without drop-and-create, ids are never
+reused, so stale JWTs can no longer map onto a different user after restarts.
 
 ---
 

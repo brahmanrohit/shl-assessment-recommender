@@ -54,7 +54,7 @@ quarkus-task-api/            (GitHub repo name: teamflow)
 ├── .github/workflows/       <- CI pipeline (Phase 6)
 ├── src/main/resources/
 │   ├── application.properties
-│   ├── import.sql           (dev seed data; replaced by Flyway in Phase 5)
+│   ├── jwt/                 (RSA keypair - generated, gitignored)
 │   └── db/migration/        (Flyway scripts, Phase 5: V1__init.sql, ...)
 └── src/main/java/com/teamtask/
     ├── model/               <- entities + enums (DB mapping)
@@ -63,15 +63,19 @@ quarkus-task-api/            (GitHub repo name: teamflow)
     ├── dto/                 <- request/response records & classes
     ├── exception/           <- custom exceptions + HTTP mappers
     ├── resource/            <- REST endpoints
-    └── security/            <- (Phase 1) JWT generation, password hashing
+    ├── security/            <- JWT creation, current user, bootstrap admin
+    └── bootstrap/           <- (Phase 2) code-based demo seed data
 ```
 
 ## 4. Database schema
 
-### Current (Phase 0)
+### Current (after Phase 1)
 ```
+users (id PK, email UNIQUE, password_hash, display_name, role, created_at)
 tasks (id PK, title, description, status, priority, due_date, created_at)
 ```
+(import.sql seeding is replaced in Phase 2 by a DemoDataBootstrap bean,
+because seed rows now need FK-valid users that only exist at runtime.)
 
 ### Target (after Phase 2)
 ```

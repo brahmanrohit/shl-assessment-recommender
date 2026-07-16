@@ -80,19 +80,42 @@ docker compose down
 | POST | `/api/auth/signup` | Register (always role MEMBER) | 201 |
 | POST | `/api/auth/login` | Get a JWT for your credentials | 200 |
 
+### Projects (require `Authorization: Bearer <token>`)
+
+| Method | Path | Description | Success code |
+|--------|------|-------------|--------------|
+| GET | `/api/projects` | My projects (admin: all) | 200 |
+| GET | `/api/projects/{id}` | One project (owner/admin) | 200 |
+| GET | `/api/projects/{id}/tasks` | Tasks inside a project | 200 |
+| POST | `/api/projects` | Create (owner = me) | 201 |
+| PUT | `/api/projects/{id}` | Update (owner/admin) | 200 |
+| DELETE | `/api/projects/{id}` | Delete + cascade tasks/comments | 204 |
+
 ### Tasks (require `Authorization: Bearer <token>`)
 
 | Method | Path | Description | Success code |
 |--------|------|-------------|--------------|
-| GET | `/api/tasks` | List all tasks (optional `?status=TODO`) | 200 |
+| GET | `/api/tasks` | My tasks (optional `?status=TODO`) | 200 |
 | GET | `/api/tasks/{id}` | Get one task by id | 200 |
-| POST | `/api/tasks` | Create a task | 201 |
+| POST | `/api/tasks` | Create a task (`projectId` required) | 201 |
 | PUT | `/api/tasks/{id}` | Update a task | 200 |
-| DELETE | `/api/tasks/{id}` | Delete a task — **ADMIN only** | 204 |
+| DELETE | `/api/tasks/{id}` | Delete a task (project owner or admin) | 204 |
 
-No token → **401**. A MEMBER calling DELETE → **403**.
-A bootstrap ADMIN is created at startup (configurable via `ADMIN_EMAIL` /
-`ADMIN_PASSWORD` env vars; dev default `admin@teamflow.local` / `admin1234`).
+### Comments (require `Authorization: Bearer <token>`)
+
+| Method | Path | Description | Success code |
+|--------|------|-------------|--------------|
+| GET | `/api/tasks/{id}/comments` | Comments on a task | 200 |
+| POST | `/api/tasks/{id}/comments` | Add a comment (author = me) | 201 |
+
+**Access model:** no token → **401**. Everything is scoped to the caller:
+you only see projects you own (and the tasks/comments inside them) — touching
+someone else's returns **403**. Admins see everything.
+An ADMIN account is created at startup (credentials via `ADMIN_EMAIL` /
+`ADMIN_PASSWORD`; dev default `admin@teamflow.local` / `admin1234`).
+Demo data is **opt-in** (`DEMO_DATA=true`): docker-compose sets it for local
+development, seeding a demo MEMBER (`demo@teamflow.local` / `demo1234`) with
+a sample project, tasks and comments. Deployments without that flag stay clean.
 
 ### Try it with curl
 
@@ -113,11 +136,22 @@ curl http://localhost:8080/api/tasks -H "Authorization: Bearer <TOKEN>"
 # List only in-progress tasks
 curl "http://localhost:8080/api/tasks?status=IN_PROGRESS" -H "Authorization: Bearer <TOKEN>"
 
-# Create a task
+# Create a project, then a task inside it
+curl -X POST http://localhost:8080/api/projects \
+  -H "Authorization: Bearer <TOKEN>" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Job hunt","description":"Interview prep work"}'
+
 curl -X POST http://localhost:8080/api/tasks \
   -H "Authorization: Bearer <TOKEN>" \
   -H "Content-Type: application/json" \
-  -d '{"title":"Prepare for interview","priority":"HIGH","dueDate":"2026-08-20"}'
+  -d '{"title":"Prepare for interview","projectId":1,"priority":"HIGH","dueDate":"2026-08-20"}'
+
+# Comment on a task
+curl -X POST http://localhost:8080/api/tasks/1/comments \
+  -H "Authorization: Bearer <TOKEN>" \
+  -H "Content-Type: application/json" \
+  -d '{"body":"Focus on JPA relations and the N+1 problem"}'
 
 # Update a task
 curl -X PUT http://localhost:8080/api/tasks/1 \
