@@ -49,10 +49,16 @@ Learning value > feature count. Depth > breadth.
 - Verified live: 9/9 security behaviors, incl. 409 duplicate email and
   no-password-hash-leak guarantees
 
+### ✅ Done (Phase 2 — relations, completed 2026-07-16)
+- Projects → Tasks → Comments with real foreign keys + DB-level cascade
+- Per-owner access control (403 walls between members; admins see all)
+- Hardened by multi-agent adversarial review before push
+
+### ✅ Done (Phase 3 — pagination, completed 2026-07-16)
+- Every list endpoint returns the PageResponse envelope; size capped at 100
+- Whitelisted sorting (400 otherwise) + status/priority filters
+
 ### 🎯 To build (in order — see Phases.md for details)
-2. **Projects & comments (relations)** — Project → has many Tasks → has many
-   Comments; tasks belong to projects; proper foreign keys; ownership checks
-3. **Pagination, filtering, sorting** — no endpoint ever returns unbounded lists
 4. **File attachments via S3** — upload/download task attachments
    (LocalStack locally, real S3 on AWS)
 5. **Flyway migrations** — versioned schema changes, production-style

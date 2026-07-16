@@ -73,9 +73,15 @@ endpoints tested, no accidental N+1 in the list endpoints.
 
 ---
 
-## Phase 3 — Pagination, filtering, sorting
+## Phase 3 — Pagination, filtering, sorting ✅ DONE (2026-07-16)
 
 **Goal:** No endpoint returns unbounded lists.
+
+> Shipped: PageResponse envelope on all four list endpoints, PageParams
+> clamping (size cap 100), per-repository sort whitelists (400 on unknown
+> fields - injection defense), priority filter on tasks, stable ", id"
+> ORDER BY tiebreakers. Verified live: envelope math, out-of-range page,
+> clamp, whitelist 400, sort order, filters, exactly 2 SQL queries per page.
 
 **Scope**
 - `GET /api/tasks?page=0&size=20&sort=dueDate,asc&status=TODO&priority=HIGH`

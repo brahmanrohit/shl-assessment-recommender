@@ -394,3 +394,69 @@ and fetch the other's project — you get our clean 403.
     -> Phase 2 rows need BCrypt-hashed users and an FK chain
     (users → projects → tasks); a static SQL file can't hash passwords, so a
     startup bean seeds it — and can be disabled by env var in production.
+
+---
+
+## 15. Pagination, filtering, sorting (Phase 3)
+
+### Why unbounded lists kill real systems
+
+`GET /tasks` returning EVERYTHING works with 5 rows. With 5 million it:
+loads them all into memory (OOM), serializes megabytes of JSON per request,
+and locks the database longer per query. Rule: **every list endpoint is
+bounded**. Ours cap at 100 rows per page, no exceptions.
+
+### The envelope
+
+```json
+{ "content": [...], "page": 0, "size": 20, "totalElements": 143, "totalPages": 8 }
+```
+Metadata travels WITH the data so clients can render "page 3 of 8" without
+guessing. One generic record (`PageResponse<T>`) serves every endpoint.
+
+### What happens underneath: LIMIT/OFFSET + a COUNT
+
+`.page(Page.of(2, 20))` becomes SQL `LIMIT 20 OFFSET 40`. And the total?
+That's a SECOND query (`SELECT COUNT(*)` with the same WHERE). Two queries
+per page is normal — we measured exactly 2 in the SQL log. Interview bonus:
+for huge datasets OFFSET itself gets slow (the DB still walks the skipped
+rows) — the fix is *keyset pagination* ("everything after id X"), worth
+mentioning even though we don't need it here.
+
+### Two details seniors check for
+
+1. **Stable ordering:** every ORDER BY ends with `, t.id` as a tiebreaker.
+   Without it, rows with equal sort values can shuffle between pages —
+   users see duplicates/gaps while paging. Subtle, classic, real.
+2. **The sort whitelist (security!):** `?sort=` input ends up inside an
+   ORDER BY clause. We map allowed names (`dueDate` → `t.dueDate`) through
+   a whitelist and REJECT everything else with 400. Concatenating raw user
+   input into any query string — even just ORDER BY — is how injection
+   starts. Try `?sort=passwordHash`: clean 400, and the input never
+   touches the query.
+
+### Parameter hygiene
+
+`page < 0` → 0. `size` missing → 20, `size > 100` → 100 (clamped — a client
+asking for a million rows gets 100). Out-of-range page → `content: []` with
+correct metadata, still 200 (a valid question with an empty answer).
+All parsing lives in ONE place (`PageParams`) so every endpoint behaves
+identically.
+
+### New interview questions you can now answer
+
+15. **How do you paginate an API?**
+    -> page/size params (0-based, size capped), LIMIT/OFFSET underneath,
+    a count query for totals, and a standard envelope with metadata.
+
+16. **How do you let clients sort safely?**
+    -> `sort=field,dir` validated against a whitelist that maps API names to
+    column paths; anything else is a 400. User input never reaches the query.
+
+17. **Why does your ORDER BY end with the id?**
+    -> Deterministic tiebreaker: equal values would otherwise shuffle
+    between pages and clients would see duplicates or gaps.
+
+18. **What's the cost of pagination?**
+    -> Two queries per page (rows + count); for very deep pages OFFSET
+    degrades and keyset pagination is the scalable alternative.

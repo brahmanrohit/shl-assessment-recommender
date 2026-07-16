@@ -108,6 +108,15 @@ docker compose down
 | GET | `/api/tasks/{id}/comments` | Comments on a task | 200 |
 | POST | `/api/tasks/{id}/comments` | Add a comment (author = me) | 201 |
 
+**Pagination (all list endpoints):** `?page=0&size=20&sort=field,desc` —
+`size` caps at 100; sort fields are whitelisted per resource (tasks:
+`id,title,status,priority,dueDate,createdAt`; projects: `id,name,createdAt`);
+tasks also filter by `?status=` and `?priority=`. Lists return an envelope:
+
+```json
+{ "content": [ ... ], "page": 0, "size": 20, "totalElements": 5, "totalPages": 1 }
+```
+
 **Access model:** no token → **401**. Everything is scoped to the caller:
 you only see projects you own (and the tasks/comments inside them) — touching
 someone else's returns **403**. Admins see everything.

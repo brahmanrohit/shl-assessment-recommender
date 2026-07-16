@@ -9,7 +9,7 @@
 
 ## Current status
 
-- **Phase:** 2 complete ✅ (Projects & Comments relations + ownership) — Phase 3 (pagination/filtering/sorting) is NEXT
+- **Phase:** 3 complete ✅ (pagination/filtering/sorting) — Phase 4 (S3 attachments) is NEXT
 - **Last updated:** 2026-07-16
 - **CANONICAL LOCATION:** `C:\Users\ROHIT SHARMA\shl-assessment-recommender\teamflow\`
   — merged into the `shl-assessment-recommender` repo as a subfolder (owner's
@@ -163,3 +163,24 @@
   (signup is open; names already visible in comments; nothing gained).
 - 21 tests across Auth/Task/Project/Comment suites incl. two-member ownership
   boundaries (still CI-pending, Phase 6)
+
+### 2026-07-16 — Session 6: PHASE 3 COMPLETE ✅ (pagination/filtering/sorting)
+- All four list endpoints return PageResponse envelope {content,page,size,
+  totalElements,totalPages}; PageParams clamps (page>=0, size 1..100 cap);
+  sort=field,dir validated against PER-REPOSITORY whitelists (400 otherwise —
+  ORDER BY injection defense); tasks gained ?priority= filter; every ORDER BY
+  has ", id" tiebreaker for stable pages; comments fixed oldest-first
+- New files: dto/PageResponse, dto/PageParams, service/PagedResult,
+  exception/InvalidQueryParameter(+Mapper), test/PaginationTest (7 tests)
+- Repos return PanacheQuery; services apply .page(Page.of()) + separate
+  fragment-style count() (list WHERE and count WHERE kept in sync)
+- BUG CAUGHT DURING VERIFICATION: first build "succeeded" but container ran
+  old code — the `docker compose | tail -4` pipe masked the real exit code
+  (compile failure: missing jakarta.ws.rs.QueryParam imports in Project/
+  CommentResource). LESSON: never pipe a build's output if you need its exit
+  code; verify BEHAVIOR (envelope shape + fresh boot timestamps), not status.
+- Verified live 8/8: envelope math (5 rows/size 2 → 3 pages), out-of-range
+  page → empty content 200, size clamp 100000→100, sort injection → 400 with
+  whitelist, dueDate,desc ordering, priority filter, comments envelope,
+  exactly 2 SQL queries per paged list (SELECT + COUNT)
+- Multi-agent adversarial review run on the diff (3 lenses × 3 skeptics)
