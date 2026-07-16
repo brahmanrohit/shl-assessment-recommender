@@ -21,3 +21,7 @@ Thumbs.db
 # Secrets / local overrides (never commit real credentials)
 .env
 *.local.properties
+
+# JWT signing keys - generated, NEVER committed (Rules.md: no secrets in git).
+# Locally: run generate-jwt-keys.sh. Docker build generates its own.
+src/main/resources/jwt/

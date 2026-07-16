@@ -17,6 +17,15 @@ RUN mvn -q -B dependency:go-offline
 
 # Now copy the source and build the runnable app (skip tests for a fast image).
 COPY src ./src
+
+# Generate a fresh RSA keypair for JWT signing. Keys are NEVER committed to
+# git (see .gitignore) - each image gets its own pair, baked in at build time.
+RUN mkdir -p src/main/resources/jwt \
+ && openssl genrsa -out /tmp/rsa.pem 2048 \
+ && openssl rsa -pubout -in /tmp/rsa.pem -out src/main/resources/jwt/publicKey.pem \
+ && openssl pkcs8 -topk8 -nocrypt -inform pem -in /tmp/rsa.pem -outform pem -out src/main/resources/jwt/privateKey.pem \
+ && rm /tmp/rsa.pem
+
 RUN mvn -q -B clean package -DskipTests
 
 # ---------- Stage 2: run the application ----------
