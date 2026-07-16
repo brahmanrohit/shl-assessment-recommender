@@ -46,16 +46,17 @@ class ProjectResourceTest {
     }
 
     @Test
-    void listProjects_containsOwnProject() {
+    void listProjects_containsOwnProject_inEnvelope() {
         String owner = AuthTestSupport.memberToken();
         AuthTestSupport.createProject(owner, "Listed project");
 
         given()
             .header("Authorization", "Bearer " + owner)
-            .when().get("/api/projects")
+            .when().get("/api/projects?size=100")
             .then()
             .statusCode(200)
-            .body("name", org.hamcrest.CoreMatchers.hasItem("Listed project"));
+            .body("content.name", org.hamcrest.CoreMatchers.hasItem("Listed project"))
+            .body("size", equalTo(100)); // envelope metadata present
     }
 
     @Test
@@ -185,7 +186,7 @@ class ProjectResourceTest {
             .when().get("/api/projects/" + projectId + "/tasks")
             .then()
             .statusCode(200)
-            .body("size()", equalTo(1))
-            .body("[0].title", equalTo("Only task in here"));
+            .body("totalElements", equalTo(1))
+            .body("content[0].title", equalTo("Only task in here"));
     }
 }

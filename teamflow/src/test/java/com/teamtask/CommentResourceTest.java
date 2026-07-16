@@ -36,8 +36,8 @@ class CommentResourceTest {
             .when().get("/api/tasks/" + taskId + "/comments")
             .then()
             .statusCode(200)
-            .body("size()", equalTo(1))
-            .body("[0].body", equalTo("First comment!"));
+            .body("totalElements", equalTo(1))
+            .body("content[0].body", equalTo("First comment!"));
     }
 
     @Test
