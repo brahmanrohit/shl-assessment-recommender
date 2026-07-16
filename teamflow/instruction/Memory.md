@@ -9,11 +9,23 @@
 
 ## Current status
 
-- **Phase:** 6 complete ✅ (CI/CD) — Phase 7 (health checks + metrics) is LAST
-- **Last updated:** 2026-07-16
+- **ALL 7 PHASES COMPLETE ✅ (2026-07-16)** — the planned roadmap is done.
+  Remaining ideas live in the Phases.md backlog (real AWS deploy, refresh
+  tokens, rate limiting, S3 orphan cleanup, keyset pagination).
 - Schema OWNED by Flyway; data persists across restarts; every push to
   deploy/main touching teamflow/** runs the full 43-test suite in GitHub
   Actions (workflow: .github/workflows/teamflow-ci.yml at REPO root)
+- **Owner's next job: STUDY.** LEARN.md has 18 sections + 24 interview
+  Q&As covering every line of this codebase.
+
+### 2026-07-16 — Session 10: PHASE 7 COMPLETE ✅ (observability) — ROADMAP DONE
+- quarkus-smallrye-health + quarkus-micrometer-registry-prometheus; zero
+  custom code (datasource extension auto-registers the DB readiness check)
+- k8s/deployment.yaml wired: livenessProbe /q/health/live, readinessProbe
+  /q/health/ready
+- Verified live: live UP (200, no auth), ready UP incl. "Database
+  connections health check", /q/metrics serving Prometheus-format JVM+HTTP
+  metrics
 - NOTE: ponytail (lazy-senior) mode active since late Phase 3 — simplest
   working solution, reuse before new code, deliberate ceilings marked with
   "ponytail:" comments

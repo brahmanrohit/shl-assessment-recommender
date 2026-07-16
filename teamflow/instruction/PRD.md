@@ -58,12 +58,14 @@ Learning value > feature count. Depth > breadth.
 - Every list endpoint returns the PageResponse envelope; size capped at 100
 - Whitelisted sorting (400 otherwise) + status/priority filters
 
-### 🎯 To build (in order — see Phases.md for details)
-4. **File attachments via S3** — upload/download task attachments
-   (LocalStack locally, real S3 on AWS)
-5. **Flyway migrations** — versioned schema changes, production-style
-6. **CI/CD with GitHub Actions** — every push builds + tests + produces a Docker image
-7. **Health checks + metrics** — /q/health for Kubernetes probes, Prometheus metrics
+### ✅ Done (Phases 4–7, completed 2026-07-16)
+- **S3 attachments** — multipart upload, presigned downloads, LocalStack locally
+- **Flyway migrations** — schema owned by versioned SQL, Hibernate validates
+- **CI/CD** — GitHub Actions runs all 43 tests + Docker build on every push
+- **Health + metrics** — /q/health/live, /q/health/ready (DB check), /q/metrics
+
+### 🏁 ROADMAP COMPLETE — remaining work lives in the Phases.md backlog
+(real AWS deployment, refresh tokens, rate limiting, S3 orphan cleanup, ...)
 
 ## 6. Non-goals (explicitly OUT of scope)
 

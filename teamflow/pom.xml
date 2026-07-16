@@ -79,6 +79,18 @@
             <artifactId>quarkus-elytron-security-common</artifactId>
         </dependency>
 
+        <!-- Observability (Phase 7): /q/health/live + /q/health/ready
+             (DB check auto-registered) and Prometheus metrics at /q/metrics.
+             Zero custom code - the extensions instrument everything. -->
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-smallrye-health</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-micrometer-registry-prometheus</artifactId>
+        </dependency>
+
         <!-- Schema migrations (Phase 5): Flyway owns the schema, versioned
              SQL files in db/migration. flyway-mysql adds MySQL support. -->
         <dependency>

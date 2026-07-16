@@ -162,9 +162,15 @@ merge red builds.
 
 ---
 
-## Phase 7 — Health checks + metrics (observability)
+## Phase 7 — Health checks + metrics (observability) ✅ DONE (2026-07-16)
 
 **Goal:** The service can prove it is alive and expose metrics.
+
+> Shipped with ZERO custom code: quarkus-smallrye-health (+auto DB readiness
+> check from the datasource extension) + micrometer-prometheus. K8s manifest
+> wired to the probes. Verified live: /q/health/live UP, /q/health/ready UP
+> with "Database connections health check", /q/metrics serving Prometheus.
+> ALL 7 PHASES COMPLETE.
 
 **Scope**
 - `quarkus-smallrye-health`: `/q/health/live` + `/q/health/ready`

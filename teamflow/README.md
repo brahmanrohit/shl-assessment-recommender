@@ -22,8 +22,11 @@ A backend REST API for managing tasks, built with **Java 21 + Quarkus**, backed 
 | Docs | OpenAPI + Swagger UI |
 | Build | Maven |
 | Packaging | Docker (multi-stage build) + Docker Compose |
-| Orchestration | Kubernetes manifest included |
-| Testing | JUnit 5 + REST Assured |
+| Orchestration | Kubernetes manifest with liveness/readiness probes |
+| Migrations | Flyway (versioned SQL, Hibernate validates) |
+| Observability | SmallRye Health (`/q/health`) + Prometheus metrics (`/q/metrics`) |
+| CI | GitHub Actions — full test suite + Docker build on every push |
+| Testing | JUnit 5 + REST Assured (43 integration tests) |
 
 ---
 
@@ -218,6 +221,16 @@ Request body `{"title":""}` returns **HTTP 400**:
   "message": "Task with id 999 was not found"
 }
 ```
+
+---
+
+## Health & metrics (no auth required — Kubernetes probes these)
+
+| Path | Purpose |
+|------|---------|
+| `/q/health/live` | "The process is alive" — K8s restarts the pod if this fails |
+| `/q/health/ready` | "Ready for traffic" — includes a real DB connection check |
+| `/q/metrics` | Prometheus metrics: request rates, latencies, JVM memory/GC |
 
 ---
 

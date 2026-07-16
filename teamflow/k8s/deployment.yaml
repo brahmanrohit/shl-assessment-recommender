@@ -39,6 +39,21 @@ spec:
             - name: DB_PASSWORD
               # In real life this comes from a Secret, never hard-coded.
               value: taskpass
+          # Phase 7: Kubernetes drives these against our SmallRye Health
+          # endpoints. Liveness failing -> restart the pod. Readiness
+          # failing (e.g. DB unreachable) -> stop routing traffic to it.
+          livenessProbe:
+            httpGet:
+              path: /q/health/live
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /q/health/ready
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
           resources:
             requests:
               memory: "256Mi"

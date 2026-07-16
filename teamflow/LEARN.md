@@ -547,3 +547,42 @@ can never point at a *different* user after a reboot.
 22. **What does hibernate `validate` do and why use it?**
     -> At startup it checks the entities match the actual schema and fails
     fast if not. Migrations own the schema; the ORM just verifies.
+
+---
+
+## 18. Observability: health checks + metrics (Phase 7)
+
+### Liveness vs readiness (K8s interview staple)
+
+- **/q/health/live** — "is the process alive?" Fails -> Kubernetes KILLS and
+  restarts the pod. Should only fail when the app is truly wedged.
+- **/q/health/ready** — "can I serve traffic RIGHT NOW?" Ours includes a real
+  database connection check (auto-registered by the datasource extension).
+  Fails -> K8s stops routing requests to this pod but does NOT restart it —
+  e.g. while the DB is briefly unreachable.
+
+Mixing these up causes restart storms: a DB blip on a liveness check
+reboots every pod in the fleet for no reason.
+
+### Metrics
+
+`/q/metrics` exposes Prometheus-format numbers with zero code: request
+counts and latencies per endpoint, JVM heap, GC pauses. Prometheus scrapes
+it on a schedule; Grafana graphs it; alerts fire on thresholds. The three
+numbers that matter for an API: request rate, error rate, latency (RED).
+
+### Why zero custom code was the right amount
+
+Both extensions instrument the app automatically. A custom health check is
+only worth writing for a dependency the framework can't see (e.g. "is my
+S3 bucket reachable?") — and only when an outage of it should stop traffic.
+
+### New interview questions you can now answer
+
+23. **Difference between liveness and readiness probes?**
+    -> Liveness = restart me if stuck. Readiness = don't send traffic yet
+    (e.g. DB down, still warming up). Confusing them causes restart storms.
+
+24. **How would you monitor your service in production?**
+    -> Prometheus scrapes /q/metrics; dashboards + alerts on request rate,
+    error rate, and latency percentiles; health endpoints drive K8s probes.
