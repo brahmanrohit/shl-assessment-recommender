@@ -1,13 +1,9 @@
 package com.teamtask.exception;
 
-/**
- * Thrown when someone asks for a task id that does not exist.
- * A dedicated exception makes the code read clearly and lets us
- * turn it into a proper HTTP 404 response (see TaskNotFoundExceptionMapper).
- */
-public class TaskNotFoundException extends RuntimeException {
+/** Unknown task id -> 404. */
+public class TaskNotFoundException extends ApiException {
 
     public TaskNotFoundException(Long id) {
-        super("Task with id " + id + " was not found");
+        super(404, "Task with id " + id + " was not found");
     }
 }

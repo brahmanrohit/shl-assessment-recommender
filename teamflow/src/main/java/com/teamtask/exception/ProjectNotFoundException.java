@@ -1,11 +1,9 @@
 package com.teamtask.exception;
 
-/**
- * Thrown when a project id doesn't exist. Mapped to HTTP 404.
- */
-public class ProjectNotFoundException extends RuntimeException {
+/** Unknown project id -> 404. */
+public class ProjectNotFoundException extends ApiException {
 
     public ProjectNotFoundException(Long id) {
-        super("Project with id " + id + " was not found");
+        super(404, "Project with id " + id + " was not found");
     }
 }

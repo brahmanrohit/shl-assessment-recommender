@@ -139,8 +139,11 @@ a record).
 ## 8. Error handling — Exception Mappers
 
 Instead of leaking ugly stack traces, we throw meaningful exceptions
-(`TaskNotFoundException`) and map them to proper HTTP responses
-(`TaskNotFoundExceptionMapper` -> 404). Consistent error shape = professional API.
+(`TaskNotFoundException`) that each carry their HTTP status, and ONE
+`ApiExceptionMapper` turns them all into the standard error JSON.
+(JAX-RS picks the mapper of the nearest superclass — so one mapper for the
+`ApiException` base covers every subclass.) Consistent error shape =
+professional API, without seven copy-pasted mapper classes.
 
 ---
 

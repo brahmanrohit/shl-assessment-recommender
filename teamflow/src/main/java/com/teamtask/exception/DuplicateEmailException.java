@@ -1,12 +1,9 @@
 package com.teamtask.exception;
 
-/**
- * Thrown when someone signs up with an email that is already registered.
- * Mapped to HTTP 409 Conflict.
- */
-public class DuplicateEmailException extends RuntimeException {
+/** Email already registered -> 409 Conflict. */
+public class DuplicateEmailException extends ApiException {
 
     public DuplicateEmailException(String email) {
-        super("An account with email '" + email + "' already exists");
+        super(409, "An account with email '" + email + "' already exists");
     }
 }

@@ -183,4 +183,12 @@
   page → empty content 200, size clamp 100000→100, sort injection → 400 with
   whitelist, dueDate,desc ordering, priority filter, comments envelope,
   exactly 2 SQL queries per paged list (SELECT + COUNT)
-- Multi-agent adversarial review run on the diff (3 lenses × 3 skeptics)
+- Multi-agent adversarial review of the phase-3 diff was interrupted by a
+  session restart and NOT resumed (diff already behavior-verified live 8/8)
+- Ponytail simplification pass after phase-3 push: 7 copy-pasted exception
+  mappers → 1 ApiExceptionMapper (ApiException base carries the HTTP status;
+  JAX-RS resolves subclasses to the superclass mapper). Net −5 files.
+  Verified live: 404/401/409/400/200 all identical JSON shapes.
+  Kept deliberately: PagedResult vs PageResponse split (layering rule),
+  duplicated 8-line orderBy whitelists in 2 repos (extraction = unrequested
+  abstraction)
