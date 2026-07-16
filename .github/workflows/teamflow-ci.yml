@@ -1,0 +1,42 @@
+# ============================================================
+#  TeamFlow CI (Phase 6)
+#  Every push touching teamflow/ is compiled, fully tested and
+#  Docker-built automatically. Red build = don't merge/deploy.
+#
+#  The integration tests boot the real app; Quarkus Dev Services
+#  starts throwaway MySQL + LocalStack containers on the runner
+#  (that's why no database/S3 services are declared here).
+# ============================================================
+name: teamflow-ci
+
+on:
+  push:
+    branches: [deploy, main]
+    paths: ["teamflow/**", ".github/workflows/teamflow-ci.yml"]
+  pull_request:
+    paths: ["teamflow/**", ".github/workflows/teamflow-ci.yml"]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: teamflow
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+
+      # Keys are gitignored - every environment generates its own pair.
+      - name: Generate JWT signing keys
+        run: bash generate-jwt-keys.sh
+
+      - name: Build and run all tests
+        run: mvn -B verify
+
+      - name: Build Docker image
+        run: docker build -t teamflow:${{ github.sha }} .

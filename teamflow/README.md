@@ -1,5 +1,7 @@
 # Task Manager API
 
+![CI](https://github.com/brahmanrohit/shl-assessment-recommender/actions/workflows/teamflow-ci.yml/badge.svg)
+
 A backend REST API for managing tasks, built with **Java 21 + Quarkus**, backed by **MySQL**, and fully **containerized with Docker**. It demonstrates a clean, layered backend architecture and is ready to deploy to the cloud (AWS ECS / Kubernetes).
 
 > Built as a portfolio project to demonstrate production-style backend development: REST API design, relational data modelling, validation, error handling, and containerized deployment.
