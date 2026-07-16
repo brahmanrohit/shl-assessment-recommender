@@ -5,6 +5,7 @@ import com.teamtask.dto.TaskResponse;
 import com.teamtask.model.Task;
 import com.teamtask.model.TaskStatus;
 import com.teamtask.service.TaskService;
+import jakarta.annotation.security.RolesAllowed;
 import jakarta.validation.Valid;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
@@ -32,8 +33,14 @@ import java.util.List;
  *
  * @Produces/@Consumes JSON means requests and responses use JSON.
  * The resource stays THIN: it only translates HTTP <-> service calls.
+ *
+ * SECURITY (Phase 1): the class-level @RolesAllowed means EVERY endpoint
+ * here requires a valid JWT from a MEMBER or ADMIN. No token -> 401.
+ * DELETE tightens it further to ADMIN only (method-level wins) -> 403 for
+ * members. Authentication = who you are; authorization = what you may do.
  */
 @Path("/api/tasks")
+@RolesAllowed({"ADMIN", "MEMBER"})
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 public class TaskResource {
@@ -81,9 +88,11 @@ public class TaskResource {
 
     /**
      * Delete a task. Returns HTTP 204 No Content (success, nothing to send back).
+     * ADMIN only: a member calling this gets 403 Forbidden.
      */
     @DELETE
     @Path("/{id}")
+    @RolesAllowed("ADMIN")
     public Response delete(@PathParam("id") Long id) {
         service.delete(id);
         return Response.noContent().build();
