@@ -1,0 +1,7 @@
+# Keep the Docker build context small and clean.
+target/
+.git/
+.idea/
+*.iml
+.vscode/
+*.md

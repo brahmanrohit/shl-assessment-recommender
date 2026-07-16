@@ -1,0 +1,45 @@
+# ============================================================
+#  DOCKER COMPOSE
+#  Starts TWO containers that talk to each other:
+#    1. mysql  - the database
+#    2. app    - our Quarkus API (built from the Dockerfile)
+#
+#  Run everything with:   docker compose up --build
+#  Stop everything with:  Ctrl+C  then  docker compose down
+# ============================================================
+services:
+
+  mysql:
+    image: mysql:8.4
+    environment:
+      MYSQL_DATABASE: taskdb
+      MYSQL_USER: taskuser
+      MYSQL_PASSWORD: taskpass
+      MYSQL_ROOT_PASSWORD: rootpass
+    ports:
+      - "3306:3306"          # exposed so you can also connect from your laptop
+    volumes:
+      - mysql_data:/var/lib/mysql   # keeps data on disk between restarts
+    healthcheck:
+      # "app" waits until this reports the database is ready to accept connections.
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-prootpass"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+
+  app:
+    build: .                 # build the image using the Dockerfile in this folder
+    depends_on:
+      mysql:
+        condition: service_healthy   # don't start until MySQL is healthy
+    environment:
+      # These override the defaults in application.properties.
+      # Note the host is "mysql" - the service name above, not localhost.
+      DB_URL: jdbc:mysql://mysql:3306/taskdb
+      DB_USER: taskuser
+      DB_PASSWORD: taskpass
+    ports:
+      - "8080:8080"          # open http://localhost:8080/swagger-ui
+
+volumes:
+  mysql_data:
