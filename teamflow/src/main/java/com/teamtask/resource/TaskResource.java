@@ -4,6 +4,7 @@ import com.teamtask.dto.TaskRequest;
 import com.teamtask.dto.TaskResponse;
 import com.teamtask.model.Task;
 import com.teamtask.model.TaskStatus;
+import com.teamtask.security.CurrentUser;
 import com.teamtask.service.TaskService;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.validation.Valid;
@@ -25,19 +26,16 @@ import java.util.List;
  * The RESOURCE is the REST layer: it maps HTTP requests to Java methods.
  *
  * Base path: /api/tasks
- *   GET    /api/tasks            -> list all (optionally ?status=TODO)
- *   GET    /api/tasks/{id}       -> get one
- *   POST   /api/tasks            -> create
+ *   GET    /api/tasks            -> list MY tasks (optionally ?status=TODO)
+ *   GET    /api/tasks/{id}       -> get one (if it's in my project)
+ *   POST   /api/tasks            -> create (into one of my projects)
  *   PUT    /api/tasks/{id}       -> update
- *   DELETE /api/tasks/{id}       -> delete
+ *   DELETE /api/tasks/{id}       -> delete (ADMIN only)
  *
- * @Produces/@Consumes JSON means requests and responses use JSON.
- * The resource stays THIN: it only translates HTTP <-> service calls.
- *
- * SECURITY (Phase 1): the class-level @RolesAllowed means EVERY endpoint
- * here requires a valid JWT from a MEMBER or ADMIN. No token -> 401.
- * DELETE tightens it further to ADMIN only (method-level wins) -> 403 for
- * members. Authentication = who you are; authorization = what you may do.
+ * SECURITY: class-level @RolesAllowed = every endpoint needs a valid JWT
+ * (401 without one). Since Phase 2, results are also scoped to the caller:
+ * the injected CurrentUser is handed to the service, which enforces
+ * project OWNERSHIP (403 if it exists but isn't yours). Admins see all.
  */
 @Path("/api/tasks")
 @RolesAllowed({"ADMIN", "MEMBER"})
@@ -46,26 +44,26 @@ import java.util.List;
 public class TaskResource {
 
     private final TaskService service;
+    private final CurrentUser currentUser;
 
-    public TaskResource(TaskService service) {
+    public TaskResource(TaskService service, CurrentUser currentUser) {
         this.service = service;
+        this.currentUser = currentUser;
     }
 
     /**
-     * List tasks. If ?status=IN_PROGRESS is supplied, filter by that status.
+     * List MY tasks (all tasks for admins). ?status=IN_PROGRESS filters.
      */
     @GET
     public List<TaskResponse> list(@QueryParam("status") TaskStatus status) {
-        List<Task> tasks = (status == null)
-                ? service.listAll()
-                : service.listByStatus(status);
+        List<Task> tasks = service.listVisible(currentUser, status);
         return tasks.stream().map(TaskResponse::from).toList();
     }
 
     @GET
     @Path("/{id}")
     public TaskResponse getById(@PathParam("id") Long id) {
-        return TaskResponse.from(service.findById(id));
+        return TaskResponse.from(service.findAccessible(id, currentUser));
     }
 
     /**
@@ -74,7 +72,7 @@ public class TaskResource {
      */
     @POST
     public Response create(@Valid TaskRequest request) {
-        Task created = service.create(request);
+        Task created = service.create(request, currentUser);
         return Response.status(Response.Status.CREATED)
                 .entity(TaskResponse.from(created))
                 .build();
@@ -83,18 +81,17 @@ public class TaskResource {
     @PUT
     @Path("/{id}")
     public TaskResponse update(@PathParam("id") Long id, @Valid TaskRequest request) {
-        return TaskResponse.from(service.update(id, request));
+        return TaskResponse.from(service.update(id, request, currentUser));
     }
 
     /**
      * Delete a task. Returns HTTP 204 No Content (success, nothing to send back).
-     * ADMIN only: a member calling this gets 403 Forbidden.
+     * Allowed for the task's project OWNER or an admin - anyone else gets 403.
      */
     @DELETE
     @Path("/{id}")
-    @RolesAllowed("ADMIN")
     public Response delete(@PathParam("id") Long id) {
-        service.delete(id);
+        service.delete(id, currentUser);
         return Response.noContent().build();
     }
 }

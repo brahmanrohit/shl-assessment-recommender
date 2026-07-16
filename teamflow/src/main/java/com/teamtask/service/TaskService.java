@@ -1,10 +1,16 @@
 package com.teamtask.service;
 
 import com.teamtask.dto.TaskRequest;
+import com.teamtask.exception.AccessDeniedException;
+import com.teamtask.exception.InvalidReferenceException;
 import com.teamtask.exception.TaskNotFoundException;
+import com.teamtask.model.Project;
 import com.teamtask.model.Task;
 import com.teamtask.model.TaskStatus;
+import com.teamtask.model.User;
 import com.teamtask.repository.TaskRepository;
+import com.teamtask.repository.UserRepository;
+import com.teamtask.security.CurrentUser;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.transaction.Transactional;
 
@@ -20,40 +26,57 @@ import java.util.List;
  *   Repository-> "talk to the database"
  * This separation is exactly what interviewers mean by "clean architecture".
  *
- * @Transactional means the method runs inside a database transaction: all its
- * changes either fully succeed together, or are fully rolled back on error.
+ * Since Phase 2, every operation is scoped to the CALLER: you only see and
+ * touch tasks inside projects you own (admins see everything). The project
+ * ownership rule itself lives in ProjectService.findAccessible - reused here.
  */
 @ApplicationScoped
 public class TaskService {
 
     private final TaskRepository repository;
+    private final ProjectService projectService;
+    private final UserRepository users;
 
-    // Constructor injection: Quarkus passes in the repository automatically.
-    public TaskService(TaskRepository repository) {
+    public TaskService(TaskRepository repository, ProjectService projectService, UserRepository users) {
         this.repository = repository;
+        this.projectService = projectService;
+        this.users = users;
     }
 
+    /** Tasks I'm allowed to see, optionally filtered by status. */
     @Transactional
-    public List<Task> listAll() {
-        return repository.listAll();
+    public List<Task> listVisible(CurrentUser user, TaskStatus status) {
+        return repository.listVisible(user.id(), user.isAdmin(), status);
     }
 
+    /** Tasks of one project - after checking I may see that project. */
     @Transactional
-    public List<Task> listByStatus(TaskStatus status) {
-        return repository.findByStatus(status);
+    public List<Task> listByProject(Long projectId, CurrentUser user) {
+        projectService.findAccessible(projectId, user); // 404/403 gate
+        return repository.listByProject(projectId);
     }
 
+    /**
+     * Load one task and enforce access via its project's owner.
+     * 404 if the task doesn't exist, 403 if it belongs to someone else.
+     */
     @Transactional
-    public Task findById(Long id) {
-        Task task = repository.findById(id);
+    public Task findAccessible(Long id, CurrentUser user) {
+        Task task = repository.findByIdWithRefs(id);
         if (task == null) {
             throw new TaskNotFoundException(id);
+        }
+        if (!user.isAdmin() && !task.getProject().getOwner().getId().equals(user.id())) {
+            throw new AccessDeniedException("task", id);
         }
         return task;
     }
 
     @Transactional
-    public Task create(TaskRequest request) {
+    public Task create(TaskRequest request, CurrentUser user) {
+        // You can only add tasks to projects you may access (404/403 otherwise).
+        Project project = projectService.findAccessible(request.projectId, user);
+
         Task task = new Task();
         task.setTitle(request.title);
         task.setDescription(request.description);
@@ -64,14 +87,22 @@ public class TaskService {
             task.setPriority(request.priority);
         }
         task.setDueDate(request.dueDate);
+        task.setProject(project);
+        task.setAssignee(resolveAssignee(request.assigneeId));
 
         repository.persist(task); // INSERT into the database
         return task;              // now has a generated id
     }
 
     @Transactional
-    public Task update(Long id, TaskRequest request) {
-        Task existing = findById(id); // reuses the 404 logic above
+    public Task update(Long id, TaskRequest request, CurrentUser user) {
+        Task existing = findAccessible(id, user);
+
+        // Moving the task to another project? That project must be yours too.
+        if (!existing.getProject().getId().equals(request.projectId)) {
+            Project target = projectService.findAccessible(request.projectId, user);
+            existing.setProject(target);
+        }
 
         existing.setTitle(request.title);
         existing.setDescription(request.description);
@@ -82,17 +113,34 @@ public class TaskService {
             existing.setPriority(request.priority);
         }
         existing.setDueDate(request.dueDate);
+        existing.setAssignee(resolveAssignee(request.assigneeId));
 
         // No explicit save needed: 'existing' is a managed entity, so Hibernate
         // writes the changes to MySQL automatically when the transaction commits.
         return existing;
     }
 
+    /**
+     * Phase 2 ownership rule: the project OWNER (or an admin) may delete
+     * tasks in their project. findAccessible does the 404/403 work.
+     * (Supersedes Phase 1's admin-only rule - the instruction/Phases.md
+     * ownership decision applies to ALL modifications, deletes included.)
+     */
     @Transactional
-    public void delete(Long id) {
-        boolean deleted = repository.deleteById(id);
-        if (!deleted) {
-            throw new TaskNotFoundException(id);
+    public void delete(Long id, CurrentUser user) {
+        Task task = findAccessible(id, user);
+        repository.delete(task);
+    }
+
+    /** Turn an optional assigneeId into a User, rejecting unknown ids (400). */
+    private User resolveAssignee(Long assigneeId) {
+        if (assigneeId == null) {
+            return null;
         }
+        User assignee = users.findById(assigneeId);
+        if (assignee == null) {
+            throw new InvalidReferenceException("Assignee with id " + assigneeId + " does not exist");
+        }
+        return assignee;
     }
 }

@@ -38,6 +38,9 @@ services:
       DB_URL: jdbc:mysql://mysql:3306/taskdb
       DB_USER: taskuser
       DB_PASSWORD: taskpass
+      # Local development EXPLICITLY opts in to the demo account + sample
+      # data (demo@teamflow.local / demo1234). Real deployments never set this.
+      DEMO_DATA: "true"
     ports:
       - "8080:8080"          # open http://localhost:8080/swagger-ui
 
