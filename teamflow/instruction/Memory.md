@@ -9,8 +9,10 @@
 
 ## Current status
 
-- **Phase:** 4 complete ✅ (S3 attachments) — Phase 5 (Flyway migrations) is NEXT
+- **Phase:** 5 complete ✅ (Flyway migrations) — Phase 6 (CI/CD GitHub Actions) is NEXT
 - **Last updated:** 2026-07-16
+- Schema is now OWNED by Flyway (db/migration/V1__init.sql); hibernate
+  generation=validate; data persists across restarts
 - NOTE: ponytail (lazy-senior) mode active since late Phase 3 — simplest
   working solution, reuse before new code, deliberate ceilings marked with
   "ponytail:" comments
@@ -218,3 +220,16 @@
 - ponytail ceilings marked in code: S3 objects orphaned on cascade delete
   (cleanup job when storage matters); presigned URL hostname is compose-
   internal (README documents the localhost swap)
+
+### 2026-07-16 — Session 8: PHASE 5 COMPLETE ✅ (Flyway migrations)
+- V1__init.sql = mysqldump of the Hibernate-built schema, tidied (named FKs,
+  + idx_tasks_status). Dump-don't-handwrite guaranteed `validate` passes —
+  note: Hibernate 6 uses native MySQL ENUM columns for @Enumerated(STRING).
+- quarkus-flyway + flyway-mysql; generation=validate; migrate-at-start=true
+- V2__seed.sql SKIPPED (plan superseded): DemoDataBootstrap already seeds
+  idempotently in code; SQL can't BCrypt
+- One-time: dev volumes wiped (docker compose down -v) so Flyway starts clean
+- Verified: flyway_schema_history shows V1 success; API 200 on the
+  Flyway-built schema; PERSISTENCE PROVEN — user created, app container
+  restarted, login still 200. Stale-JWT id-reuse risk (Phase 2 review) CLOSED.
+- Harmless boot warning: Flyway says MySQL 8.4 newer than tested (works fine)

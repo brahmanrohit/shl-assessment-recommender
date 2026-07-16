@@ -118,9 +118,16 @@ why files don't belong in MySQL.
 
 ---
 
-## Phase 5 — Flyway migrations
+## Phase 5 — Flyway migrations ✅ DONE (2026-07-16)
 
 **Goal:** Production-style schema management.
+
+> Shipped: V1__init.sql (dumped from the Hibernate-built schema, tidied,
+> + idx_tasks_status), hibernate generation=validate, flyway
+> migrate-at-start. V2__seed.sql was SKIPPED: DemoDataBootstrap already
+> seeds idempotently in code (SQL can't BCrypt) - plan line superseded.
+> One-time cost: dev volumes wiped (docker compose down -v) so Flyway owns
+> a clean schema.
 
 **Scope**
 - Add Flyway; write `V1__init.sql` capturing the full current schema (+ indexes)

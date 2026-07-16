@@ -507,3 +507,43 @@ tricks. Reject early, store nothing you didn't agree to.
 20. **Why presigned URLs instead of streaming through the API?**
     -> The API only authorizes + signs; S3 serves the bytes. No app memory
     or bandwidth per download, and links expire on their own.
+
+---
+
+## 17. Flyway migrations (Phase 5)
+
+### Why production databases are never auto-generated
+
+Until now Hibernate rebuilt the schema on every boot (`drop-and-create`) —
+fine for learning, catastrophic in production: it would ERASE ALL DATA on
+restart. Production schemas change only through **migrations**: versioned
+SQL files, applied exactly once, in order, tracked forever.
+
+### How it works here
+
+- `db/migration/V1__init.sql` — the whole schema (we DUMPED it from the
+  running MySQL that Hibernate had built, so it matches the entities
+  exactly — a neat trick for adopting Flyway in an existing app).
+- On startup Flyway checks the `flyway_schema_history` table: anything not
+  yet applied runs, in version order. Applied files are checksummed — edit
+  one and Flyway refuses to start. **Never edit an applied migration; add
+  V2__, V3__, ...**
+- Hibernate switched to `validate`: it compares entities against the real
+  schema and refuses to boot on drift. Schema truth lives in SQL now.
+
+### What this fixed
+
+Data now SURVIVES restarts. That also closes the security risk we accepted
+back in Phase 2: ids no longer restart from 1, so an old (still-valid) JWT
+can never point at a *different* user after a reboot.
+
+### New interview questions you can now answer
+
+21. **How do you change a production database schema?**
+    -> A new versioned migration file (V7__add_column.sql). Flyway applies
+    it once, records it in flyway_schema_history, and every environment
+    replays the same ordered history — dev, CI, and prod stay identical.
+
+22. **What does hibernate `validate` do and why use it?**
+    -> At startup it checks the entities match the actual schema and fails
+    fast if not. Migrations own the schema; the ORM just verifies.
