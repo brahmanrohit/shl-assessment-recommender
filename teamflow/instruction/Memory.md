@@ -18,17 +18,8 @@
 - **Owner's next job: STUDY.** LEARN.md has 18 sections + 24 interview
   Q&As covering every line of this codebase.
 
-### 2026-07-16 — Session 10: PHASE 7 COMPLETE ✅ (observability) — ROADMAP DONE
-- quarkus-smallrye-health + quarkus-micrometer-registry-prometheus; zero
-  custom code (datasource extension auto-registers the DB readiness check)
-- k8s/deployment.yaml wired: livenessProbe /q/health/live, readinessProbe
-  /q/health/ready
-- Verified live: live UP (200, no auth), ready UP incl. "Database
-  connections health check", /q/metrics serving Prometheus-format JVM+HTTP
-  metrics
-- NOTE: ponytail (lazy-senior) mode active since late Phase 3 — simplest
-  working solution, reuse before new code, deliberate ceilings marked with
-  "ponytail:" comments
+- Ponytail (lazy-senior) mode active since late Phase 3 — simplest working
+  solution, reuse before new code, ceilings marked with "ponytail:" comments
 - **CANONICAL LOCATION:** `C:\Users\ROHIT SHARMA\shl-assessment-recommender\teamflow\`
   — merged into the `shl-assessment-recommender` repo as a subfolder (owner's
   choice, via `git subtree add`, history preserved). ALL future work happens HERE.
@@ -60,32 +51,46 @@
 | 2026-07-16 | Chosen phase order: auth → relations → pagination → S3 → Flyway → CI → observability | Each phase = one interview-ready skill |
 | 2026-07-16 | Merged TeamFlow into `shl-assessment-recommender` repo as `teamflow/` subfolder | Owner's choice (single repo); mentor recommended separate repo — owner decided; subtree merge kept all commits |
 
-## What exists right now (Phase 0 inventory)
+## What exists right now (final inventory, all 7 phases)
 
-- `model/` Task + TaskStatus + TaskPriority
-- `repository/` TaskRepository (Panache)
-- `service/` TaskService (transactions, business logic)
-- `dto/` TaskRequest (validated) / TaskResponse (record)
-- `exception/` ErrorResponse + 404 & validation mappers
-- `resource/` TaskResource — full CRUD + status filter
-- `Dockerfile` (multi-stage), `docker-compose.yml` (app + MySQL 8.4)
-- `k8s/deployment.yaml`, tests in `TaskResourceTest`
-- Docs: `README.md` (recruiter-facing), `LEARN.md` (study guide)
+- `model/` User, Project, Task, Comment, Attachment + enums — 5-table FK
+  schema with DB-level ON DELETE CASCADE
+- `repository/` 5 Panache repos: join-fetch list queries, paged PanacheQuery,
+  fragment counts, per-repo sort whitelists
+- `service/` Auth (BCrypt), Token (RS256 JWT), Task/Project/Comment/Attachment
+  (ownership gate = ProjectService.findAccessible), PagedResult
+- `security/` CurrentUser (@RequestScoped JWT view), AdminBootstrap
+- `bootstrap/` DemoDataBootstrap (opt-in via DEMO_DATA)
+- `dto/` request records w/ validation, response records (no leaks),
+  PageResponse envelope + PageParams clamping
+- `exception/` ApiException base + subclasses, ONE ApiExceptionMapper +
+  ValidationExceptionMapper
+- `resource/` Auth, Task, Project, Comment, Attachment(+Link) — all list
+  endpoints paginated; /q/health + /q/metrics from extensions
+- `db/migration/V1__init.sql` (Flyway owns schema; Hibernate validates)
+- Docker multi-stage + compose (app, MySQL 8.4, LocalStack S3);
+  k8s/deployment.yaml with liveness/readiness probes
+- CI: `.github/workflows/teamflow-ci.yml` (REPO ROOT) — 43 tests, green
+- Docs: README (badge, endpoints, curl), LEARN.md (18 sections, 24 Q&As)
 
 ## Known issues / open items
 
-- [x] ~~Phase 0 not yet run end-to-end~~ ✅ VERIFIED 2026-07-16 (see session log)
-- [x] ~~Not yet pushed to GitHub~~ ✅ merged into shl-assessment-recommender, push in progress
-- [ ] Owner still working through LEARN.md sections
-- [ ] Old `quarkus-task-api/` folder to be cleaned up by owner (run
-      `docker compose down` there first if containers still running)
+- [ ] Owner study debt: LEARN.md sections + exercises (the whole point)
+- [ ] Old `quarkus-task-api/` folder still on disk — owner may delete it
+- [ ] Backlog (Phases.md): real AWS deploy (ECR/ECS/RDS/S3), refresh tokens,
+      rate limiting, S3 orphan cleanup, keyset pagination, admin password
+      env-only hardening
+- Known accepted quirks: presigned URLs use compose-internal `localstack`
+  hostname (swap for localhost on host); Flyway warns MySQL 8.4 untested
+  (harmless)
 
 ## Next actions (in order)
 
-1. Owner studies LEARN.md sections 13 (auth) + 14 (relations/N+1) — the two
-   most interview-critical sections — and plays with the two-user 403 demo
-2. Owner does the LEARN.md exercises to cement Phases 0–2
-3. Begin **Phase 3** (see Phases.md): pagination, filtering, sorting
+1. Owner studies LEARN.md (18 sections, 24 interview Q&As) until each can be
+   explained out loud — priority: §13 auth, §14 relations/N+1, §17 migrations
+2. Resume bullet + cold email to Team Computers with the repo link
+   (the original mission — templates were given in chat)
+3. Optional next build: items from the backlog, real AWS deploy first
 
 ## Session log
 
@@ -260,3 +265,14 @@
   (Auth 5, Task 10, Project 14, Comment 3, Pagination 7, Attachment 4) —
   the CI-pending test debt from Phases 1-5 is fully paid.
 - Note: tests take ~1 min (Dev Services pulls MySQL + LocalStack images).
+
+### 2026-07-16 — Session 10: PHASE 7 COMPLETE ✅ (observability) — ROADMAP DONE
+- quarkus-smallrye-health + quarkus-micrometer-registry-prometheus; ZERO
+  custom code (datasource extension auto-registers the DB readiness check)
+- k8s/deployment.yaml wired: livenessProbe /q/health/live, readinessProbe
+  /q/health/ready
+- Verified live: live UP (200, no auth), ready UP incl. "Database connections
+  health check", /q/metrics serving Prometheus-format JVM+HTTP metrics
+- Pushed 2cad479. ALL 7 PHASES BUILT, VERIFIED AND SHIPPED IN ONE DAY
+  (2026-07-16): ~40 source files, 43 green CI tests, 20+ commits, every
+  phase behavior-verified live before push.
