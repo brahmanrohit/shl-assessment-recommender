@@ -141,9 +141,14 @@ reused, so stale JWTs can no longer map onto a different user after restarts.
 
 ---
 
-## Phase 6 — CI/CD with GitHub Actions
+## Phase 6 — CI/CD with GitHub Actions ✅ DONE (2026-07-16)
 
 **Goal:** Every push is automatically built and tested.
+
+> Shipped: .github/workflows/teamflow-ci.yml (repo root, path-filtered to
+> teamflow/**): JDK 21 + maven cache, JWT keygen, mvn verify, docker build.
+> Key enabler: datasource scoped to %prod so Dev Services provides MySQL in
+> dev/test/CI. First run GREEN: 43/43 tests passed. Badge in README.
 
 **Scope**
 - `.github/workflows/ci.yml`: checkout → JDK 21 → `mvn verify` (tests use

@@ -9,10 +9,11 @@
 
 ## Current status
 
-- **Phase:** 5 complete ✅ (Flyway migrations) — Phase 6 (CI/CD GitHub Actions) is NEXT
+- **Phase:** 6 complete ✅ (CI/CD) — Phase 7 (health checks + metrics) is LAST
 - **Last updated:** 2026-07-16
-- Schema is now OWNED by Flyway (db/migration/V1__init.sql); hibernate
-  generation=validate; data persists across restarts
+- Schema OWNED by Flyway; data persists across restarts; every push to
+  deploy/main touching teamflow/** runs the full 43-test suite in GitHub
+  Actions (workflow: .github/workflows/teamflow-ci.yml at REPO root)
 - NOTE: ponytail (lazy-senior) mode active since late Phase 3 — simplest
   working solution, reuse before new code, deliberate ceilings marked with
   "ponytail:" comments
@@ -233,3 +234,17 @@
   Flyway-built schema; PERSISTENCE PROVEN — user created, app container
   restarted, login still 200. Stale-JWT id-reuse risk (Phase 2 review) CLOSED.
 - Harmless boot warning: Flyway says MySQL 8.4 newer than tested (works fine)
+
+### 2026-07-16 — Session 9: PHASE 6 COMPLETE ✅ (CI/CD, first run green)
+- .github/workflows/teamflow-ci.yml at REPO ROOT (repo is shl-assessment-
+  recommender; workflow path-filtered to teamflow/**): checkout → JDK 21
+  (temurin, maven cache) → generate-jwt-keys.sh → mvn -B verify →
+  docker build. Badge added to teamflow/README.md.
+- CRITICAL ENABLER found by reading config before writing the workflow:
+  quarkus.datasource.jdbc.url was always set, which DISABLES Dev Services →
+  CI tests would have hit a nonexistent localhost:3306. Fixed by scoping
+  username/password/url to %prod (compose behavior unchanged, verified).
+- Run 29494939692 GREEN first try: 43/43 tests, 0 failures/errors/skipped
+  (Auth 5, Task 10, Project 14, Comment 3, Pagination 7, Attachment 4) —
+  the CI-pending test debt from Phases 1-5 is fully paid.
+- Note: tests take ~1 min (Dev Services pulls MySQL + LocalStack images).
